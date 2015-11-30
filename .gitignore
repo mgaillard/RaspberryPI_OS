@@ -1,3 +1,6 @@
+# Build directory
+/build/*
+
 # Object files
 *.o
 *.ko
@@ -30,3 +33,7 @@
 
 # Debug files
 *.dSYM/
+
+# Backup files
+*~
+
