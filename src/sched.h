@@ -61,12 +61,10 @@ void free_process(struct pcb_s* process);
 //Sauvegarde le contexte a partir des valeurs des registres presents dans la pile.
 //Sauvegarde aussi la valeur des registres lr et sp du mode user.
 //Le contexte est sauvegardé dans le current_process.
-void save_context_svcmode(int* pile);
-void save_context_irqmode(int* pile);
+void save_context(int* pile);
 //Restaure le contexte dans la pile a partir des valeurs presents dans le current_process.
 //Restaure aussi les valeurs des registres lr et sp du mode user.
-void restore_context_svcmode(int* pile);
-void restore_context_irqmode(int* pile);
+void restore_context(int* pile);
 //Handler d'interruption du timer.
 void irq_handler();
 

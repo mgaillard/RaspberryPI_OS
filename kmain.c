@@ -5,12 +5,10 @@
 #include "hw.h"
 #include "asm_tools.h"
 
-#define NB_PROCESS 5
-
 int user_process()
 {
     int i = 0;
-    while(i<100)
+    for(;;)
     {
         i++;
     }
@@ -24,9 +22,7 @@ int kmain( void )
     
     sched_init();
 
-    process = create_process((func_t*)&user_process);
-    
-	timer_init();
+    process = create_process((func_t*)&user_process);	
 	
 	// ******************************************
 	// switch CPU to USER mode

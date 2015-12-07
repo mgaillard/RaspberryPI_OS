@@ -3,6 +3,7 @@
 #include "hw.h"
 #include "asm_tools.h"
 #include "syscall.h"
+#include "vmem.h"
 
 struct pcb_s *current_process;
 struct pcb_s kmain_process;
@@ -10,6 +11,11 @@ struct pcb_s kmain_process;
 void sched_init()
 {
 	kheap_init();
+	#if VMEM
+		vmem_init();
+	#else
+		timer_init();
+	#endif
 	//Initialisation du kmain_process.
 	//On fait pointer son son next_process sur lui meme
 	//car il est le seul processus a etre execute.
@@ -113,7 +119,7 @@ void free_process(struct pcb_s* process)
 	kFree((void*)(process), sizeof(struct pcb_s));
 }
 
-void save_context_svcmode(int* pile)
+void save_context(int* pile)
 {
 	int i;
 	//--------------------------------------------------------Sauvegarde
@@ -141,35 +147,7 @@ void save_context_svcmode(int* pile)
 	__asm("str r2, [r1, %0]" : : "I"(PCB_OFFSET_CPSR) : "r1");
 }
 
-void save_context_irqmode(int* pile)
-{
-	int i;
-	//--------------------------------------------------------Sauvegarde
-	//On sauvegarde les registres de la pile courante dans current_process.
-	for (i = 0;i < 13;i++)
-	{
-		current_process->registers[i] = pile[i];
-	}
-	//On sauvegarde le registre lr_svc
-	current_process->lr_svc = (func_t*)pile[13];
-	//On sauvegarde les registres lr_user et sp_user.
-	//Pour acceder au lr_user et au sp_user depuis le mode SVC, on doit passer en mode system.
-	//On met une bonne fois pour toute l'adresse de current_process dans R0.
-	__asm("mov r1, %0" : : "r"(current_process));
-	//On passe en mode SYSTEM.
-	__asm("cps 0x1f");
-	//On sauvegarde le lr_user du processus courant.
-	__asm("str lr, [r1, %0]" : : "I"(PCB_OFFSET_LR_USER) : "r1");
-	//On sauvegarde le sp du processus courant.
-	__asm("str sp, [r1, %0]" : : "I"(PCB_OFFSET_SP) : "r1");
-	//Pour on revient en mode IRQ.
-	__asm("cps 0x12");
-	//On sauvegarde le SPSR.
-	__asm("mrs r2, spsr");
-	__asm("str r2, [r1, %0]" : : "I"(PCB_OFFSET_CPSR) : "r1");
-}
-
-void restore_context_svcmode(int* pile)
+void restore_context(int* pile)
 {
 	int i;
 	//------------------------------------------------------Restauration
@@ -192,34 +170,6 @@ void restore_context_svcmode(int* pile)
 	__asm("ldr	sp, [r0, %0]" : : "I"(PCB_OFFSET_SP) : "r0");
 	//Pour on revient en mode SVC.
 	__asm("cps 0x13");
-	//On restaure le SPSR.
-	__asm("ldr r2, [r0, %0]" : : "I"(PCB_OFFSET_CPSR) : "r0");
-	__asm("msr spsr, r2");
-}
-
-void restore_context_irqmode(int* pile)
-{
-	int i;
-	//------------------------------------------------------Restauration
-	//On ecrase la pile de swi_handler par la pile du nouveau processus.
-	for (i = 0;i < 13;i++)
-	{
-		pile[i] = current_process->registers[i];
-	}
-	//On restaure le registre lr_svc
-	pile[13] = (int)current_process->lr_svc;
-	//On restaure les registres lr_user et sp_user.
-	//Pour acceder au lr_user et au sp_user depuis le mode SVC, on doit passer en mode system.
-	//On met une bonne fois pour toute l'adresse de current_process dans R0.
-	__asm("mov r0, %0" : : "r"(current_process));
-	//On passe en mode SYSTEM.
-	__asm("cps 0x1f");
-	//On restaure le lr_user.
-	__asm("ldr	lr, [r0, %0]" : : "I"(PCB_OFFSET_LR_USER) : "r0");
-	//On restaure le sp du processus destination.
-	__asm("ldr	sp, [r0, %0]" : : "I"(PCB_OFFSET_SP) : "r0");
-	//Pour on revient en mode IRQ.
-	__asm("cps 0x12");
 	//On restaure le SPSR.
 	__asm("ldr r2, [r0, %0]" : : "I"(PCB_OFFSET_CPSR) : "r0");
 	__asm("msr spsr, r2");
@@ -234,12 +184,12 @@ void __attribute__((naked)) irq_handler()
 	__asm("mov %0, sp" : "=r"(pile));
 	//On retire 4 au lr pour eviter de sauter une instruction au retour.
 	pile[13] -= 4;
-	//On sauvegarde le contexte d'execution.
-	save_context_irqmode(pile);
-	//On passe au processus suivant.
-	elect();
-	//On restaure le contexte d'execution.
-	restore_context_irqmode(pile);
+	//On passe en mode SVC pour le changement de contexte.
+	__asm("cps 0x13");
+	//On change le processus en cours d'execution.
+	do_sys_yield(pile);
+	//On revient en mode IRQ.
+	__asm("cps 0x12");
 	//On rearme le timer.
 	set_next_tick_default();
 	ENABLE_TIMER_IRQ();

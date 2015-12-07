@@ -200,27 +200,27 @@ void do_sys_yieldto(int* pile)
 {
 	struct pcb_s* dest = (struct pcb_s*)pile[1];
 	//On sauvegarde le contexte d'execution.
-	save_context_svcmode(pile);
+	save_context(pile);
 	//On passe au processus suivant.
 	change_process(dest);
 	//On restaure le contexte d'execution.
-	restore_context_svcmode(pile);
+	restore_context(pile);
 }
 
 void do_sys_yield(int* pile)
 {
 	//On sauvegarde le contexte d'execution.
-	save_context_svcmode(pile);
+	save_context(pile);
 	//On passe au processus suivant.
 	elect();
 	//On restaure le contexte d'execution.
-	restore_context_svcmode(pile);
+	restore_context(pile);
 }
 
 void do_sys_exit(int* pile)
 {
 	//On sauvegarde le contexte d'execution.
-	save_context_svcmode(pile);
+	save_context(pile);
 	//On marque le current_process comme termine.
 	//La PCB reste dans la liste circulaire dans l'etat TERMINATED.
 	//Grace a un autre appel systeme on pourra recuperer son status et liberer la pcb.
@@ -228,7 +228,7 @@ void do_sys_exit(int* pile)
 	//On passe au process suivant.
 	elect();
 	//On restaure le contexte d'execution.
-	restore_context_svcmode(pile);
+	restore_context(pile);
 }
 
 void do_sys_free_process(int* pile)
