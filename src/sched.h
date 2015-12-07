@@ -43,6 +43,8 @@ struct pcb_s
 	struct pcb_s* previous_process;
 	//Le processus suivant dans l'ordre du round robin.
 	struct pcb_s* next_process;
+	//Pointeur vers la table des pages du processus.
+	uint32_t* page_table;
 };
 
 void sched_init();

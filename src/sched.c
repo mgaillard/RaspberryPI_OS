@@ -78,6 +78,8 @@ struct pcb_s* create_process(func_t* entry)
 	//La pile grandira vers le bas, donc il faut mettre le pointeur de pile en haut de la zone allouée.
 	process_pcb->debut_sp = kAlloc(PROCESS_STACK_SIZE) + PROCESS_STACK_SIZE;
 	process_pcb->sp = process_pcb->debut_sp;
+	//Initialisation de la table des pages du processus.
+	
 	//Par defaut le CPSR est 0x60000150
 	process_pcb->cpsr = 0x60000150;
 	//Par defaut le processus est dans l'état READY.
