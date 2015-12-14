@@ -7,6 +7,8 @@
 
 struct pcb_s *current_process;
 struct pcb_s kmain_process;
+uint32_t total_weight;
+
 
 void sched_init()
 {
@@ -25,6 +27,9 @@ void sched_init()
 	kmain_process.state = RUNNING;
 	//On initialise le code de retour.
 	kmain_process.returnCode = -1;
+	//On initialise le code de retour.
+	kmain_process.weight = niceness_to_weight(20);
+	total_weight += kmain_process.weight;
 	//On precise que c'est le processus courant.
 	current_process = &kmain_process;
 }
@@ -64,9 +69,12 @@ void change_process(struct pcb_s* next_process)
 	current_process = next_process;
 	//On met le nouveau processus courant dans l'etat RUNNING.
 	current_process->state = RUNNING;
+	
+	//set_next_tick_default();
+	set_next_tick(weight_to_timeslice(current_process->weight));
 }
 
-struct pcb_s* create_process(func_t* entry)
+struct pcb_s* create_process(func_t* entry, int niceness)
 {
 	//Allocation dynamique d'un struct pcb_s pour le nouveau processus.
 	struct pcb_s* process_pcb = (struct pcb_s*)kAlloc(sizeof(struct pcb_s));
@@ -79,6 +87,10 @@ struct pcb_s* create_process(func_t* entry)
 	process_pcb->debut_sp = kAlloc(PROCESS_STACK_SIZE) + PROCESS_STACK_SIZE;
 	process_pcb->sp = process_pcb->debut_sp;
 	//Initialisation de la table des pages du processus.
+	
+	//Calcul du pois en fonction de la niceness
+	process_pcb->weight =  niceness_to_weight(niceness);
+	total_weight += process_pcb->weight;
 	
 	//Par defaut le CPSR est 0x60000150
 	process_pcb->cpsr = 0x60000150;
@@ -103,6 +115,8 @@ void start_current_process()
 
 void exit_process(int status)
 {
+	//On retire le weight du total_weight
+	total_weight -= current_process->weight;
 	//On marque le processus comme TERMINATED.
 	current_process->state = TERMINATED;
 	//On enregistre son code retour.
@@ -193,9 +207,20 @@ void __attribute__((naked)) irq_handler()
 	//On revient en mode IRQ.
 	__asm("cps 0x12");
 	//On rearme le timer.
-	set_next_tick_default();
 	ENABLE_TIMER_IRQ();
 	
 	//Restauration du contexte d'execution et retour .
 	__asm("ldmfd sp!, {r0-r12, pc}^");
+}
+
+uint32_t niceness_to_weight(int niceness)
+{
+	return (21-niceness);
+}
+
+uint32_t weight_to_timeslice(uint32_t weight)
+{
+	uint32_t time = (uint32_t)divide((weight * TIME_SLICE),total_weight);
+	if (time == 0) time =1;
+	return time;
 }
