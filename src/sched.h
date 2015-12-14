@@ -12,6 +12,8 @@
 #define PCB_OFFSET_SP PCB_OFFSET_LR_SVC + sizeof(((struct pcb_s *)0)->lr_svc)
 #define PCB_OFFSET_CPSR PCB_OFFSET_SP + sizeof(((struct pcb_s *)0)->sp)
 
+#define TIME_SLICE 10000
+
 typedef int(func_t) (void);
 
 typedef enum ProcessState ProcessState;
@@ -45,6 +47,8 @@ struct pcb_s
 	struct pcb_s* next_process;
 	//Pointeur vers la table des pages du processus.
 	uint32_t* page_table;
+	//Weight based on niceness
+	uint32_t weight;
 };
 
 void sched_init();
@@ -53,7 +57,7 @@ void elect();
 //Impose le prochain processu a executer.
 void change_process(struct pcb_s* next_process);
 //Cree et alloue la memoire pour un nouveau processus.
-struct pcb_s* create_process(func_t* entry);
+struct pcb_s* create_process(func_t* entry, int niceness);
 //Lance un processus.
 void start_current_process();
 //Termine le current_process.
@@ -69,5 +73,10 @@ void save_context(int* pile);
 void restore_context(int* pile);
 //Handler d'interruption du timer.
 void irq_handler();
+
+//Convertit la noceness en poids
+uint32_t niceness_to_weight(int niceness);
+//Convertit le poids en temp processeur
+uint32_t weight_to_timeslice(uint32_t weight);
 
 #endif

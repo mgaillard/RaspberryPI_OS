@@ -5,12 +5,25 @@
 #include "hw.h"
 #include "asm_tools.h"
 
-int user_process()
+
+int user_process1()
 {
-    int i = 0;
+    uint64_t i = 0;
     for(;;)
     {
         i++;
+        led_off();
+    }
+    return EXIT_SUCCESS;
+}
+
+int user_process2()
+{
+    uint64_t j = 0;
+    for(;;)
+    {
+        j++;
+        led_on();
     }
     return EXIT_SUCCESS;
 }
@@ -18,11 +31,13 @@ int user_process()
 int kmain( void )
 {
     int status;
-    struct pcb_s* process;
+    struct pcb_s* process1;
+    struct pcb_s* process2;
     
     sched_init();
 
-    process = create_process((func_t*)&user_process);	
+    process1 = create_process((func_t*)&user_process1 , 15);
+    process2 = create_process((func_t*)&user_process2 , 18);	
 	
 	// ******************************************
 	// switch CPU to USER mode
@@ -34,7 +49,8 @@ int kmain( void )
     // ******************************************
 	
 	//On attend la terminaison de notre processus.
-    status = sys_wait(process);
+    status = sys_wait(process1);
+    status = sys_wait(process2);
     
     status++;
 	
