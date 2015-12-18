@@ -4,13 +4,14 @@
 #include "sched.h"
 #include "hw.h"
 #include "asm_tools.h"
+#include "vmem.h"
 
 int user_process()
 {
     int i = 0;
-    for(;;)
+    while(i < 10)
     {
-        i++;
+		i++;
     }
     return EXIT_SUCCESS;
 }
@@ -22,7 +23,7 @@ int kmain( void )
     
     sched_init();
 
-    process = create_process((func_t*)&user_process);	
+    process = sys_create_process((func_t*)&user_process);
 	
 	// ******************************************
 	// switch CPU to USER mode

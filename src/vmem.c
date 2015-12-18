@@ -2,9 +2,9 @@
 #include "kheap.h"
 #include "asm_tools.h"
 #include "hw.h"
+#include "page_table.h"
 
 uint32_t* mmu_table_base;
-uint8_t* page_occupancy_table;
 
 void start_mmu_C()
 {
@@ -41,39 +41,6 @@ void configure_mmu_C()
 	__asm volatile("mcr p15, 0, %[r], c3, c0, 0" : : [r] "r" (0x3));
 }
 
-/**
- * Initialise la table d'occupation des frames.
- * Toutes les frames sont marquée comme occupées sauf les frames comprises
- * entre les adresses 0x1000000 et 0x20000000.
- */
-void init_page_occupancy_table()
-{
-	//On alloue la table d'occupation des pages.
-	page_occupancy_table = kAlloc(PAGE_OCCUPANCY_TT_SIZE);
-	//On initialise toutes les pages comme occupees.
-	for (int i = 0;i < PAGE_OCCUPANCY_TT_SIZE;i++)
-	{
-		page_occupancy_table[i] = 1;
-	}
-	//On marque la memoire utilisateur comme libre.
-	uint32_t user_space_begin = ((uint32_t)kernel_heap_limit + 1) / PAGE_SIZE;
-	uint32_t user_space_end = (RAM_LIMIT + 1) / PAGE_SIZE;
-	for (int i = user_space_begin;i < user_space_end;i++)
-	{
-		page_occupancy_table[i] = 0;
-	}
-}
-
-void vmem_init()
-{
-	init_page_occupancy_table();
-	mmu_table_base = init_kern_translation_table();
-	configure_mmu_C();	
-	start_mmu_C();
-	timer_init();
-	ENABLE_AB();
-}
-
 /*
  * Cette fonction initialise la table des pages de sorte à ce que les adresse
  * virtuelle située entre 0x0 et __kernel_heap_end__ renvoies vers ces mêmes
@@ -87,7 +54,7 @@ uint32_t* init_kern_translation_table()
 	uint32_t* table_niveau1;
 	uint32_t* table_niveau2;
 	//Le nombre de table de niveau 2 pour mapper l'espace du noyau.
-	const uint32_t SECOND_LVL_TT_KERNEL_NB = ((uint32_t)kernel_heap_limit + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	const uint32_t SECOND_LVL_TT_KERNEL_NB = ((uint32_t)&__kernel_heap_end__ + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t SECOND_LVL_TT_DEVICES_START = DEVICE_SPACE_START / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t SECOND_LVL_TT_DEVICES_END = (DEVICE_SPACE_END + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t NIVEAU1_FLAGS = 0x1;
@@ -138,16 +105,28 @@ uint32_t* init_kern_translation_table()
 	return table_niveau1;
 }
 
+void vmem_init()
+{
+	init_frame_occupancy_table(FRAME_OCCUPANCY_TT_SIZE);
+	mmu_table_base = init_kern_translation_table();
+	configure_mmu_C();	
+	start_mmu_C();
+	timer_init();
+	ENABLE_AB();
+}
+
 /**
  * Initialise une table de niveau 1 pour un processus.
  * Celle-ci correspond a la table du noyau pour les adresses de l'espace noyau et les adresses des devices.
  */
 uint32_t* init_process_translation_table()
 {
-	//Le nombre de table de niveau 2 pour mapper l'espace du noyau.
-	const uint32_t SECOND_LVL_TT_KERNEL_NB = ((uint32_t)kernel_heap_limit + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	//Le nombre de frame pour mapper le noyau jusqu'au debut du tas du noyau.
+	const uint32_t KERNEL_FRAME_NB = ((uint32_t)&__kernel_heap_start__ + 1) / PAGE_SIZE;
 	const uint32_t SECOND_LVL_TT_DEVICES_START = DEVICE_SPACE_START / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t SECOND_LVL_TT_DEVICES_END = (DEVICE_SPACE_END + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	
+	const uint32_t NIVEAU1_FLAGS = 0x1;
 	
 	//On alloue la table de niveau 1.
 	uint32_t* table_niveau1 = (uint32_t*)kAlloc_aligned(FIRST_LVL_TT_SIZE, FIRST_LVL_INDEX_SIZE + 2);
@@ -156,11 +135,22 @@ uint32_t* init_process_translation_table()
 	{
 		table_niveau1[i] = 0;
 	}
-	//On alloue les tables de niveau 2 correspondant aux adresses du noyau.
-	for (int i = 0;i < SECOND_LVL_TT_KERNEL_NB;i++)
+	
+	//On alloue une table de niveau 2.
+	uint32_t* table_niveau2 = (uint32_t*)kAlloc_aligned(SECOND_LVL_TT_SIZE, SECOND_LVL_INDEX_SIZE + 2);
+	table_niveau1[0] = (uint32_t)table_niveau2 + NIVEAU1_FLAGS;
+	//On initialise les entrées de cette table a 0.
+	for (int i = 0;i < SECOND_LVL_TT_COUNT;i++)
 	{
-		table_niveau1[i] = mmu_table_base[i];
+		table_niveau2[i] = 0;
 	}
+	//On map les entrees de la table de niveau 2 du processus sur celles du noyaux.
+	uint32_t* mmu_table_niveau2 = (uint32_t*) (mmu_table_base[0] & 0xFFFFFC00);
+	for (int second_level_index = 0;second_level_index < KERNEL_FRAME_NB;second_level_index++)
+	{
+		table_niveau2[second_level_index] = mmu_table_niveau2[second_level_index];
+	}
+	
 	//On alloue les tables de niveau 2 correspondant aux adresses des devices.
 	for (int i = SECOND_LVL_TT_DEVICES_START;i < SECOND_LVL_TT_DEVICES_END;i++)
 	{
@@ -168,6 +158,46 @@ uint32_t* init_process_translation_table()
 	}
 	
 	return table_niveau1;
+}
+
+/**
+ * Libère l'espace mémoire occupé par une table des pages.
+ * Libère les pages de niveau 2 appartenant au processus.
+ * C'est à dire celle qui n'appartiennent pas au noyau.
+ * Libère la table de niveau 1.
+ */
+void free_process_translation_table(uint32_t* table)
+{
+	/*
+	const uint32_t SECOND_LVL_TT_KERNEL_NB = ((uint32_t)kernel_heap_limit + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	const uint32_t SECOND_LVL_TT_DEVICES_START = DEVICE_SPACE_START / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	
+	//On libère les tables de niveau 2 n'appartenant pas au noyau.
+	for (int i = SECOND_LVL_TT_KERNEL_NB;i < SECOND_LVL_TT_DEVICES_START;i++)
+	{
+		//Pour chaque table de niveau 2, on libère les frames.
+		
+		//Enfin, on libère toute la table de niveau 2.
+		//table[i];
+	}
+	*/
+	//On libère la table de niveau 1.
+	kFree((void*)(table), FIRST_LVL_TT_SIZE);
+}
+
+void load_kernel_page_table()
+{
+	load_page_table(mmu_table_base);
+}
+
+void load_page_table(const uint32_t* table)
+{
+	//On fait pointer la MMU sur la table des pages de ce processus.
+	__asm volatile("mov	r0, %0" : : "r"(table));
+	__asm volatile("mcr p15, 0, r0, c2, c0, 0");
+	__asm volatile("mcr p15, 0, r0, c2, c0, 1");
+
+	INVALIDATE_TLB();
 }
 
 /**

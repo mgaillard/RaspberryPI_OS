@@ -16,16 +16,8 @@ void sys_yieldto(struct pcb_s* dest);
 void sys_yield();
 void sys_exit(int status);
 int sys_wait(struct pcb_s* dest);
-
-/*************** Functions declaration mode Kernel *****************/
-void swi_handler();
-void do_sys_reboot();
-void do_sys_nop();
-void do_sys_settime(int* pile);
-void do_sys_gettime(int* pile);
-void do_sys_yieldto(int* pile);
-void do_sys_yield(int* pile);
-void do_sys_exit(int* pile);
-void do_sys_free_process(int* pile);
+struct pcb_s* sys_create_process(func_t* entry);
+ProcessState sys_process_state(struct pcb_s* process);
+int sys_process_return_code(struct pcb_s* process);
 
 #endif

@@ -5,8 +5,29 @@
 #include "syscall.h"
 #include "vmem.h"
 
+//----------------------------------------------------Variables globales
+
 struct pcb_s *current_process;
 struct pcb_s kmain_process;
+
+//------------------------------------------------------Fonction privées
+
+//Lance le processus courant.
+void start_current_process();
+//Choisit le prochain processus a executer et on fait pointer current_process dessus.
+void elect();
+//Impose le prochain processus a executer.
+void change_process(struct pcb_s* next_process);
+//Sauvegarde le contexte a partir des valeurs des registres presents dans la pile.
+//Sauvegarde aussi la valeur des registres lr et sp du mode user.
+//Le contexte est sauvegardé dans le current_process.
+void save_context(int* pile);
+//Restaure le contexte dans la pile a partir des valeurs presents dans le current_process.
+//Restaure aussi les valeurs des registres lr et sp du mode user.
+void restore_context(int* pile);
+
+
+//-----------------------------------------------------------Réalisation
 
 void sched_init()
 {
@@ -23,6 +44,10 @@ void sched_init()
 	kmain_process.next_process = &kmain_process;
 	//On initialise l'etat du processus dans la PCB.
 	kmain_process.state = RUNNING;
+	//Initialisation de la table des pages du processus.
+	kmain_process.page_table = init_process_translation_table();
+	//On passe sur la table des pages de kmain
+	load_page_table(kmain_process.page_table);
 	//On initialise le code de retour.
 	kmain_process.returnCode = -1;
 	//On precise que c'est le processus courant.
@@ -66,6 +91,46 @@ void change_process(struct pcb_s* next_process)
 	current_process->state = RUNNING;
 }
 
+void yieldto(int* pile)
+{
+	struct pcb_s* dest = (struct pcb_s*)pile[1];
+	//On sauvegarde le contexte d'execution.
+	save_context(pile);
+	//On passe au processus suivant.
+	change_process(dest);
+	//On restaure le contexte d'execution.
+	restore_context(pile);
+}
+
+void yield(int* pile)
+{
+	//On sauvegarde le contexte d'execution.
+	save_context(pile);
+	//On passe au processus suivant.
+	elect();
+	//On restaure le contexte d'execution.
+	restore_context(pile);
+}
+
+void exit_process(int* pile)
+{
+	//On sauvegarde le contexte d'execution.
+	save_context(pile);
+	//On marque le current_process comme termine.
+	//La PCB reste dans la liste circulaire dans l'etat TERMINATED.
+	//Grace a un autre appel systeme on pourra recuperer son status et liberer la pcb.
+	//On marque le processus comme TERMINATED.
+	current_process->state = TERMINATED;
+	//On enregistre son code retour.
+	current_process->returnCode = pile[1];
+	//On libere la pile de ce processus.
+	kFree((void*)(current_process->debut_sp - PROCESS_STACK_SIZE), PROCESS_STACK_SIZE);
+	//On passe au process suivant.
+	elect();
+	//On restaure le contexte d'execution.
+	restore_context(pile);
+}
+
 struct pcb_s* create_process(func_t* entry)
 {
 	//Allocation dynamique d'un struct pcb_s pour le nouveau processus.
@@ -79,11 +144,12 @@ struct pcb_s* create_process(func_t* entry)
 	process_pcb->debut_sp = kAlloc(PROCESS_STACK_SIZE) + PROCESS_STACK_SIZE;
 	process_pcb->sp = process_pcb->debut_sp;
 	//Initialisation de la table des pages du processus.
-	
+	process_pcb->page_table = init_process_translation_table();
 	//Par defaut le CPSR est 0x60000150
 	process_pcb->cpsr = 0x60000150;
 	//Par defaut le processus est dans l'état READY.
 	process_pcb->state = READY;
+	
 	//On initialise le code de retour.
 	process_pcb->returnCode = -1;
 	//On insere la PCB dans la liste circulaire du round-robin, juste apres current_process.
@@ -95,20 +161,12 @@ struct pcb_s* create_process(func_t* entry)
 	return process_pcb;
 }
 
-void start_current_process()
+void __attribute__((naked)) start_current_process()
 {
-	int returnCode = current_process->lr_user();
-	sys_exit(returnCode);
-}
-
-void exit_process(int status)
-{
-	//On marque le processus comme TERMINATED.
-	current_process->state = TERMINATED;
-	//On enregistre son code retour.
-	current_process->returnCode = status;
-	//On libere la pile de ce processus.
-	kFree((void*)(current_process->debut_sp - PROCESS_STACK_SIZE), PROCESS_STACK_SIZE);
+	//On saute vers la fonction principale du processus.
+	__asm volatile("blx lr");
+	//Le retour du processus est contenu dans le registre R0, et est repassé à la fonction sys_exit.
+	__asm volatile("b sys_exit");
 }
 
 void free_process(struct pcb_s* process)
@@ -118,6 +176,7 @@ void free_process(struct pcb_s* process)
 	process->previous_process->next_process = process->next_process;
 	
 	//On libere la pcb de ce processus.
+	free_process_translation_table(process->page_table);
 	kFree((void*)(process), sizeof(struct pcb_s));
 }
 
@@ -170,7 +229,7 @@ void restore_context(int* pile)
 	__asm("ldr	lr, [r0, %0]" : : "I"(PCB_OFFSET_LR_USER) : "r0");
 	//On restaure le sp du processus destination.
 	__asm("ldr	sp, [r0, %0]" : : "I"(PCB_OFFSET_SP) : "r0");
-	//Pour on revient en mode SVC.
+	//On revient en mode SVC.
 	__asm("cps 0x13");
 	//On restaure le SPSR.
 	__asm("ldr r2, [r0, %0]" : : "I"(PCB_OFFSET_CPSR) : "r0");
@@ -180,22 +239,36 @@ void restore_context(int* pile)
 void __attribute__((naked)) irq_handler()
 {
 	int* pile;
+	DISABLE_IRQ();
 	//Sauvegarde du contexte d'execution.
 	__asm("stmfd sp!, {r0-r12, lr}");
 	//Memorisation du sommet de pile pour lecture des parametres.
 	__asm("mov %0, sp" : "=r"(pile));
+	
+	//On passe sur la table de traduction du noyau.
+	load_kernel_page_table();
+	
 	//On retire 4 au lr pour eviter de sauter une instruction au retour.
 	pile[13] -= 4;
 	//On passe en mode SVC pour le changement de contexte.
 	__asm("cps 0x13");
 	//On change le processus en cours d'execution.
-	do_sys_yield(pile);
+	yield(pile);
 	//On revient en mode IRQ.
 	__asm("cps 0x12");
+	
+	//On repasse sur la table des pages du processus suivant.
+	load_page_table(current_process->page_table);
+	
 	//On rearme le timer.
 	set_next_tick_default();
 	ENABLE_TIMER_IRQ();
 	
 	//Restauration du contexte d'execution et retour .
 	__asm("ldmfd sp!, {r0-r12, pc}^");
+}
+
+const uint32_t* get_current_process_page_table()
+{
+	return current_process->page_table;
 }

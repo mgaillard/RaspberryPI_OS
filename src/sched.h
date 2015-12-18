@@ -11,14 +11,16 @@
 #define PCB_OFFSET_LR_SVC PCB_OFFSET_LR_USER + sizeof(((struct pcb_s *)0)->lr_user)
 #define PCB_OFFSET_SP PCB_OFFSET_LR_SVC + sizeof(((struct pcb_s *)0)->lr_svc)
 #define PCB_OFFSET_CPSR PCB_OFFSET_SP + sizeof(((struct pcb_s *)0)->sp)
+#define PCB_OFFSET_PAGE_TABLE PCB_OFFSET_CPSR + sizeof(((struct pcb_s *)0)->cpsr)
 
+//-----------------------------------------------------------------Types
 typedef int(func_t) (void);
 
-typedef enum ProcessState ProcessState;
 enum ProcessState
 {
     RUNNING, READY, WAITING, TERMINATED
 };
+typedef enum ProcessState ProcessState;
 
 struct pcb_s
 {
@@ -33,6 +35,8 @@ struct pcb_s
 	void* sp;
 	//Le registre CPSR.
 	uint32_t cpsr;
+	//Pointeur vers la table des pages du processus.
+	uint32_t* page_table;
 	//Le debut de la pile.
 	void* debut_sp;
 	//L'état du processus.
@@ -43,31 +47,24 @@ struct pcb_s
 	struct pcb_s* previous_process;
 	//Le processus suivant dans l'ordre du round robin.
 	struct pcb_s* next_process;
-	//Pointeur vers la table des pages du processus.
-	uint32_t* page_table;
 };
 
+//---------------------------------------------------Fonctions publiques
+
 void sched_init();
-//Choisit le prochain processus a executer et on fait pointer current_process dessus.
-void elect();
-//Impose le prochain processu a executer.
-void change_process(struct pcb_s* next_process);
+//Sauvegarde/Restaure le contexte et passe au processus dest.
+void yieldto(int* pile);
+//Sauvegarde/Restaure le contexte et passe au processus suivant.
+void yield(int* pile);
+//Termine le processus et et passe au processus suivant.
+void exit_process(int* pile);
 //Cree et alloue la memoire pour un nouveau processus.
 struct pcb_s* create_process(func_t* entry);
-//Lance un processus.
-void start_current_process();
-//Termine le current_process.
-void exit_process(int status);
 //Libere la PCB d'un processus et le retire de la liste circulaire.
 void free_process(struct pcb_s* process);
-//Sauvegarde le contexte a partir des valeurs des registres presents dans la pile.
-//Sauvegarde aussi la valeur des registres lr et sp du mode user.
-//Le contexte est sauvegardé dans le current_process.
-void save_context(int* pile);
-//Restaure le contexte dans la pile a partir des valeurs presents dans le current_process.
-//Restaure aussi les valeurs des registres lr et sp du mode user.
-void restore_context(int* pile);
 //Handler d'interruption du timer.
 void irq_handler();
+//Retourne la table des pages du processus courant.
+const uint32_t* get_current_process_page_table();
 
 #endif

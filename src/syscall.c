@@ -3,6 +3,20 @@
 #include "hw.h"
 #include "kheap.h"
 #include "asm_tools.h"
+#include "vmem.h"
+
+//------------------------------------------------------Fonction privées
+void swi_handler();
+void do_sys_reboot();
+void do_sys_nop();
+void do_sys_settime(int* pile);
+void do_sys_gettime(int* pile);
+void do_sys_free_process(int* pile);
+void do_sys_create_process(int* pile);
+void do_sys_process_state(int* pile);
+void do_sys_process_return_code(int* pile);
+
+//-----------------------------------------------------------Réalisation
 
 void sys_reboot()
 {
@@ -84,13 +98,13 @@ int sys_wait(struct pcb_s* dest)
 {
 	int status = -1;
 	//Tant que le code de retour est -1, le processus n'est pas termine.
-	while(dest->state != TERMINATED)
+	while(sys_process_state(dest) != TERMINATED)
 	{
 		//On laisse notre tour, le temps d'attendre 
 		sys_yield();
 	}
 	//On retient le code de retour du processus.
-	status = dest->returnCode;
+	status = sys_process_return_code(dest);
 	//On supprime proprement la memoire du processus.
 	//On met le parametre dans le registre R1.
 	__asm("mov r1, %0" : : "r"(dest));
@@ -100,6 +114,51 @@ int sys_wait(struct pcb_s* dest)
 	__asm("swi #0");
 	
 	return status;
+}
+
+struct pcb_s* sys_create_process(func_t* entry)
+{
+	struct pcb_s* process;
+	//On donne le numero d'appel système dans R0.
+	__asm("mov r0, #9");
+	//Le parametre est dans le registre R1.
+	__asm("mov r1, %0" : : "r"(entry) : "r0");
+	//On fait une interruption logicielle.
+	__asm("swi #0");
+	//On recupère le résultat de l'appel système depuis le registre R0.
+	__asm("mov %0, r0" : "=r"(process));
+
+	return process;
+}
+
+ProcessState sys_process_state(struct pcb_s* process)
+{
+	ProcessState state;
+	//On donne le numero d'appel système dans R0.
+	__asm("mov r0, #10");
+	//Le parametre est dans le registre R1.
+	__asm("mov r1, %0" : : "r"(process) : "r0");
+	//On fait une interruption logicielle.
+	__asm("swi #0");
+	//On recupère le résultat de l'appel système depuis le registre R0.
+	__asm("mov %0, r0" : "=r"(state));
+
+	return state;
+}
+
+int sys_process_return_code(struct pcb_s* process)
+{
+	int returnCode;
+	//On donne le numero d'appel système dans R0.
+	__asm("mov r0, #11");
+	//Le parametre est dans le registre R1.
+	__asm("mov r1, %0" : : "r"(process) : "r0");
+	//On fait une interruption logicielle.
+	__asm("swi #0");
+	//On recupère le résultat de l'appel système depuis le registre R0.
+	__asm("mov %0, r0" : "=r"(returnCode));
+
+	return returnCode;
 }
 
 void __attribute__((naked)) swi_handler()
@@ -114,6 +173,9 @@ void __attribute__((naked)) swi_handler()
 	__asm("mov %0, sp" : "=r"(pile) : : "r0");
 	//Lecture du numero d'appel systeme dans R0.
 	__asm("mov %0, r0" : "=r"(numeroAppelSysteme) : : "r0");
+	
+	//On passe sur la table de traduction du noyau.
+	load_kernel_page_table();
 	
 	switch(numeroAppelSysteme)
 	{
@@ -130,24 +192,37 @@ void __attribute__((naked)) swi_handler()
 			do_sys_gettime(pile);
 			break;
 		case 5:
-			do_sys_yieldto(pile);
+			yieldto(pile);
 			break;
 		case 6:
-			do_sys_yield(pile);
+			yield(pile);
 			break;
 		case 7:
-			do_sys_exit(pile);
+			exit_process(pile);
 			break;
 		case 8:
 			do_sys_free_process(pile);
+			break;
+		case 9:
+			do_sys_create_process(pile);
+			break;
+		case 10:
+			do_sys_process_state(pile);
+			break;
+		case 11:
+			do_sys_process_return_code(pile);
 			break;
 		default:
 			//L'appel système demande n'est pas connu.
 			PANIC();
 			break;
 	}
+	//On repasse sur la table des pages du processus.
+	load_page_table(get_current_process_page_table());
+	
 	//On reactive les interruptions.
-	ENABLE_IRQ();	
+	ENABLE_IRQ();
+	
 	//Restauration du contexte d'execution et retour .
 	__asm("ldmfd sp!, {r0-r12, pc}^");
 }
@@ -196,42 +271,32 @@ void do_sys_gettime(int* pile)
 	pile[1] = date_ms >> 32;
 }
 
-void do_sys_yieldto(int* pile)
-{
-	struct pcb_s* dest = (struct pcb_s*)pile[1];
-	//On sauvegarde le contexte d'execution.
-	save_context(pile);
-	//On passe au processus suivant.
-	change_process(dest);
-	//On restaure le contexte d'execution.
-	restore_context(pile);
-}
-
-void do_sys_yield(int* pile)
-{
-	//On sauvegarde le contexte d'execution.
-	save_context(pile);
-	//On passe au processus suivant.
-	elect();
-	//On restaure le contexte d'execution.
-	restore_context(pile);
-}
-
-void do_sys_exit(int* pile)
-{
-	//On sauvegarde le contexte d'execution.
-	save_context(pile);
-	//On marque le current_process comme termine.
-	//La PCB reste dans la liste circulaire dans l'etat TERMINATED.
-	//Grace a un autre appel systeme on pourra recuperer son status et liberer la pcb.
-	exit_process(pile[1]);
-	//On passe au process suivant.
-	elect();
-	//On restaure le contexte d'execution.
-	restore_context(pile);
-}
-
 void do_sys_free_process(int* pile)
 {
 	free_process((struct pcb_s*)pile[1]);
+}
+
+void do_sys_create_process(int* pile)
+{
+	func_t* entry;
+	struct pcb_s* process;
+	//On recupere les arguments depuis la pile.
+	entry = (func_t*)pile[1];
+	process = create_process(entry);
+	//On retourne la PCB par le registre R0 de la pile.
+	pile[0] = (int)process;
+}
+
+void do_sys_process_state(int* pile)
+{
+	struct pcb_s* process = (struct pcb_s*)pile[1];
+	//On retourne l'etat par le registre R0 de la pile.
+	pile[0] = (int)process->state;
+}
+
+void do_sys_process_return_code(int* pile)
+{
+	struct pcb_s* process = (struct pcb_s*)pile[1];
+	//On retourne le code par le registre R0 de la pile.
+	pile[0] = (int)process->returnCode;
 }
