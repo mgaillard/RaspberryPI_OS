@@ -3,6 +3,8 @@
 
 #include <inttypes.h>
 
+#define FIRST_LEVEL_FLAGS 0x1
+
 //Table de pagination
 //Ajouter une correspondance dans la table de pagination
 //Supprimer une correspondance dans la table de pagination
@@ -35,8 +37,9 @@ void free_page_table(uint32_t* page_table);
  * @param page_table La table des pages a laquelle ajouter l'entrée.
  * @param first_index L'index de niveau 1 de la frame dans la table des pages.
  * @param second_index L'index de niveau 2 de la frame dans la table des pages.
- * @param frame_number Le numero de la frame.
+ * @param frame_address L'adresse de debut de la frame.
+ * @param frame_flags Les flags à appliquer à la frame.
  */
-void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index, uint32_t frame_number);
+void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index, uint32_t frame_address, uint32_t frame_flags);
 
 #endif

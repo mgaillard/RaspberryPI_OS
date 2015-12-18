@@ -11,7 +11,7 @@ uint8_t* frame_occupancy_table;
  * Retourne l'adresse de la table de niveau 2 en fonction de l'index de niveau 1.
  * Si la table de niveau 2 n'est pas définie, retourne la constante FORBIDDEN_ADDRESS.
  */
-uint32_t* second_level_page_table(uint32_t* page_table, uint32_t first_level_index)
+uint32_t* second_level_page_table(const uint32_t* page_table, uint32_t first_level_index)
 {   
     /* 1st and 2nd table addresses*/
     uint32_t table_base;
@@ -91,17 +91,20 @@ void free_page_table(uint32_t* page_table)
 	///TODO : Libérer les tables de niveau 2.
 }
 
-void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index, uint32_t frame_number)
+void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index, uint32_t frame_address, uint32_t frame_flags)
 {
 	uint32_t* second_level_table;
 	//On vérifie si la table de niveau 2 correspondante est allouée.
 	second_level_table = second_level_page_table(page_table, first_level_index);
-	if (second_level_table != FORBIDDEN_ADDRESS)
+	if (second_level_table == FORBIDDEN_ADDRESS)
 	{
 		//On alloue une table de niveau 2.
-		
+		second_level_table = create_second_level_page_table();
 		//On fait le lien entre la table de niveau 1 et cette table de niveau 1.
-		
+		page_table[first_level_index] = (uint32_t)second_level_table | FIRST_LEVEL_FLAGS;
 	}
 	//On ajoute l'entrée à la table de niveau 2.
+	second_level_table[second_level_index] = frame_address | frame_flags;
+	//On note la frame comme occupée.
+	frame_occupancy_table[first_level_index*SECOND_LVL_TT_COUNT + second_level_index] = 1;
 }
