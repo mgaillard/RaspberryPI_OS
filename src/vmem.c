@@ -61,6 +61,7 @@ uint32_t* init_kern_translation_table()
 	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
 	const uint32_t SECOND_LEVEL_DEVICE_FLAGS = 0x17;
 
+	//On crée la table des pages du noyau.
 	page_table = create_page_table();
 
 	//On fait correspondre les adresses logiques du noyau aux adresses physiques pour la mémoire du noyau.
@@ -112,64 +113,37 @@ uint32_t* init_process_translation_table()
 	const uint32_t KERNEL_FRAME_NB = ((uint32_t)&__kernel_heap_start__ + 1) / PAGE_SIZE;
 	const uint32_t SECOND_LVL_TT_DEVICES_START = DEVICE_SPACE_START / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t SECOND_LVL_TT_DEVICES_END = (DEVICE_SPACE_END + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
-	
-	const uint32_t NIVEAU1_FLAGS = 0x1;
-	
-	//On alloue la table de niveau 1.
-	uint32_t* table_niveau1 = (uint32_t*)kAlloc_aligned(FIRST_LVL_TT_SIZE, FIRST_LVL_INDEX_SIZE + 2);
-	//On invalide toutes les entrees de la table de niveau 1. Avant de les initialiser correctement.
-	for (int i = 0;i < FIRST_LVL_TT_COUNT;i++)
-	{
-		table_niveau1[i] = 0;
-	}
-	
-	//On alloue une table de niveau 2.
-	uint32_t* table_niveau2 = (uint32_t*)kAlloc_aligned(SECOND_LVL_TT_SIZE, SECOND_LVL_INDEX_SIZE + 2);
-	table_niveau1[0] = (uint32_t)table_niveau2 + NIVEAU1_FLAGS;
-	//On initialise les entrées de cette table a 0.
-	for (int i = 0;i < SECOND_LVL_TT_COUNT;i++)
-	{
-		table_niveau2[i] = 0;
-	}
-	//On map les entrees de la table de niveau 2 du processus sur celles du noyaux.
-	uint32_t* mmu_table_niveau2 = (uint32_t*) (mmu_table_base[0] & 0xFFFFFC00);
-	for (int second_level_index = 0;second_level_index < KERNEL_FRAME_NB;second_level_index++)
-	{
-		table_niveau2[second_level_index] = mmu_table_niveau2[second_level_index];
-	}
-	
-	//On alloue les tables de niveau 2 correspondant aux adresses des devices.
-	for (int i = SECOND_LVL_TT_DEVICES_START;i < SECOND_LVL_TT_DEVICES_END;i++)
-	{
-		table_niveau1[i] = mmu_table_base[i];
-	}
-	
-	return table_niveau1;
-}
+	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
+	const uint32_t SECOND_LEVEL_DEVICE_FLAGS = 0x17;
 
-/**
- * Libère l'espace mémoire occupé par une table des pages.
- * Libère les pages de niveau 2 appartenant au processus.
- * C'est à dire celle qui n'appartiennent pas au noyau.
- * Libère la table de niveau 1.
- */
-void free_process_translation_table(uint32_t* table)
-{
-	/*
-	const uint32_t SECOND_LVL_TT_KERNEL_NB = ((uint32_t)kernel_heap_limit + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
-	const uint32_t SECOND_LVL_TT_DEVICES_START = DEVICE_SPACE_START / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	//On crée la table des pages du processus.
+	uint32_t* page_table = create_page_table();
 	
-	//On libère les tables de niveau 2 n'appartenant pas au noyau.
-	for (int i = SECOND_LVL_TT_KERNEL_NB;i < SECOND_LVL_TT_DEVICES_START;i++)
+	//On fait correspondre les adresses logiques et physiques du noyau.
+	for (int frame = 0;frame < KERNEL_FRAME_NB;frame++)
 	{
-		//Pour chaque table de niveau 2, on libère les frames.
-		
-		//Enfin, on libère toute la table de niveau 2.
-		//table[i];
+		//On retrouve pour la frame, les index de niveau 1 et de niveau 2.
+		uint32_t first_level_index = frame / SECOND_LVL_TT_COUNT;
+		uint32_t second_level_index = frame - first_level_index * SECOND_LVL_TT_COUNT;
+		uint32_t frame_address = frame * PAGE_SIZE;
+
+		add_entry_page_table(page_table, first_level_index, second_level_index, frame_address, SECOND_LEVEL_FLAGS);
 	}
-	*/
-	//On libère la table de niveau 1.
-	kFree((void*)(table), FIRST_LVL_TT_SIZE);
+	
+	//On fait correspondre les adresses logiques du noyau aux adresses physiques pour la partie mémoire des devices.
+	for (uint32_t first_level_index = SECOND_LVL_TT_DEVICES_START;first_level_index < SECOND_LVL_TT_DEVICES_END;first_level_index++)
+	{
+		//On initialise les entrées de cette table.
+		for (int second_level_index = 0;second_level_index < SECOND_LVL_TT_COUNT;second_level_index++)
+		{
+			//On calcule le debut de la frame en fonction des index de niveau 1 et de niveau 2 pour avoir les mêmes adresses logiques et physiques.
+			uint32_t frame_address = first_level_index*SECOND_LVL_TT_COUNT*PAGE_SIZE + second_level_index*PAGE_SIZE;
+			//On ajoute cette frame à la table des pages.
+			add_entry_page_table(page_table, first_level_index, second_level_index, frame_address, SECOND_LEVEL_DEVICE_FLAGS);
+		}
+	}
+	
+	return page_table;
 }
 
 void load_kernel_page_table()
@@ -193,63 +167,4 @@ void load_page_table(const uint32_t* table)
 uint8_t* vmem_alloc_for_userland(struct pcb_s* process, uint32_t size)
 {
 	return 0;
-}
-
-uint32_t vmem_translate(uint32_t va, struct pcb_s* process)
-{
-    uint32_t pa;/*The result */
-    
-    /* 1st and 2nd table addresses*/
-    uint32_t table_base;
-    uint32_t second_level_table;
-    
-    /*Indexes*/
-    uint32_t first_level_index;
-    uint32_t second_level_index;
-    uint32_t page_index;
-    
-    /*Descriptors*/
-    uint32_t first_level_descriptor;
-    uint32_t* first_level_descriptor_address;
-    uint32_t second_level_descriptor;
-    uint32_t* second_level_descriptor_address;
-    
-    if(process == NULL)
-    {
-        __asm("mrc p15,0,%[tb],c2,c0,0": [tb] "=r"(table_base));
-    }
-    else
-    {
-        table_base = (uint32_t)process->page_table;
-    }
-    
-    table_base = table_base & 0xFFFFC000;
-    
-    /*Indexes*/
-    first_level_index = (va >> 20);
-    second_level_index = ((va << 12) >> 24);
-    page_index = (va & 0x00000FFF);
-    
-    /*First level descriptor*/
-    first_level_descriptor_address = (uint32_t*) (table_base | (first_level_index << 2));
-    first_level_descriptor = *(first_level_descriptor_address);
-    
-    /*Translation fault*/
-    if(! (first_level_descriptor & 0x3)) {
-        return(uint32_t) FORBIDDEN_ADDRESS;
-    }
-    
-    /*Second level descriptor*/
-    second_level_table = first_level_descriptor & 0xFFFFFC00;
-    second_level_descriptor_address = (uint32_t*) (second_level_table | (second_level_index << 2));
-    second_level_descriptor = *((uint32_t*)second_level_descriptor_address);
-    
-    /*Translation fault*/
-    if(! (second_level_descriptor & 0x3)) {
-        return (uint32_t) FORBIDDEN_ADDRESS;
-    }
-    
-    /*Physical address*/
-    pa = (second_level_descriptor & 0xFFFFF000) | page_index;
-    return pa;
 }

@@ -42,11 +42,6 @@ void vmem_init();
 uint32_t* init_process_translation_table();
 
 /**
- * Libère la mémoire occupée par la table de traduction d'un process.
- */
-void free_process_translation_table(uint32_t* table);
-
-/**
  * Change la table des pages par celle du noyau.
  */
 void load_kernel_page_table();
@@ -57,6 +52,5 @@ void load_kernel_page_table();
 void load_page_table(const uint32_t* table);
 
 uint8_t* vmem_alloc_for_userland(struct pcb_s* process, uint32_t size);
-uint32_t vmem_translate(uint32_t va, struct pcb_s* process);
 
 #endif

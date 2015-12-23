@@ -23,6 +23,12 @@ void init_frame_occupancy_table(uint32_t size);
 void free_frame_occupancy_table();
 
 /**
+ * Retourne l'état d'une frame.
+ * @param frame Le numéro de la frame.
+ */
+uint32_t get_frame_occupancy_table(uint32_t frame);
+
+/**
  * Crée une table de page vide.
  */
 uint32_t* create_page_table();
@@ -41,5 +47,12 @@ void free_page_table(uint32_t* page_table);
  * @param frame_flags Les flags à appliquer à la frame.
  */
 void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index, uint32_t frame_address, uint32_t frame_flags);
+
+/**
+ * Traduit une adresse logique selon une table de pagination.
+ * @param va L'adresse logique à traduire.
+ * @param page_table L'adresse de la table de pagination.
+ */
+uint32_t vmem_translate(uint32_t va, uint32_t* page_table);
 
 #endif

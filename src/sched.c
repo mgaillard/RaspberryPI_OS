@@ -4,6 +4,8 @@
 #include "asm_tools.h"
 #include "syscall.h"
 #include "vmem.h"
+#include "page_table.h"
+#include "util.h"
 
 //----------------------------------------------------Variables globales
 
@@ -176,7 +178,7 @@ void free_process(struct pcb_s* process)
 	process->previous_process->next_process = process->next_process;
 	
 	//On libere la pcb de ce processus.
-	free_process_translation_table(process->page_table);
+	free_page_table(process->page_table);
 	kFree((void*)(process), sizeof(struct pcb_s));
 }
 

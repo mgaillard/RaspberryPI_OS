@@ -102,7 +102,7 @@ kAlloc(unsigned int size)
 
 	/* Fill with FORBIDDEN_BYTE to debug (more) easily */
 	for (int i = 0 ; i < size_aligned ; i++) {
-	    *((uint8_t*) cfl) = FORBIDDEN_BYTE;
+	    *((uint8_t*) cfl + i) = FORBIDDEN_BYTE;
 	}
 
 	return ((uint8_t *) cfl);
