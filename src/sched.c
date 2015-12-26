@@ -126,8 +126,8 @@ void exit_process(int* pile)
 	//On enregistre son code retour.
 	current_process->returnCode = pile[1];
 	//On libere la pile de ce processus.
-	///TODO : Libérer la pile en utilisant vmem free user land.
-	//kFree((void*)(current_process->debut_sp - PROCESS_STACK_SIZE), PROCESS_STACK_SIZE);
+	vmem_free(current_process->page_table, current_process->debut_sp - PROCESS_STACK_SIZE, PROCESS_STACK_SIZE);
+	free_page_table(process->page_table);
 	//On passe au process suivant.
 	elect();
 	//On restaure le contexte d'execution.
@@ -179,7 +179,6 @@ void free_process(struct pcb_s* process)
 	process->previous_process->next_process = process->next_process;
 	
 	//On libere la pcb de ce processus.
-	free_page_table(process->page_table);
 	kFree((void*)(process), sizeof(struct pcb_s));
 }
 

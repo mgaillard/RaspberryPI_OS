@@ -21,7 +21,7 @@ uint32_t* second_level_page_table(const uint32_t* page_table, uint32_t first_lev
  * @param first_level_index L'index de niveau 1 de la page.
  * @param second_level_index L'index de niveau 2 de la page.
  */
-int free_page_page_table(const uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index);
+int is_free_page_table(const uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index);
 
 /**
  * Crée une table de niveau 2 vide.
@@ -67,7 +67,7 @@ uint32_t* second_level_page_table(const uint32_t* page_table, uint32_t first_lev
     return (uint32_t*)second_level_table;
 }
 
-int free_page_page_table(const uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index)
+int is_free_page_table(const uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index)
 {
     uint32_t* second_level_table = second_level_page_table(page_table, first_level_index);
     if (second_level_table != FORBIDDEN_ADDRESS)
@@ -102,6 +102,7 @@ void free_second_level_page_table(uint32_t* second_level_table)
     for (uint32_t second_level_index = 0;second_level_index < SECOND_LVL_TT_COUNT;second_level_index++)
     {
         uint32_t frame = (second_level_table[second_level_index] & 0xFFFFF000) / PAGE_SIZE;
+        second_level_table[second_level_index] = 0;
         //On précise que la frame n'est plus occupée par cette table.
         set_frame_occupancy_table(frame, 0);
     }
@@ -175,6 +176,23 @@ uint32_t find_free_frame_occupancy_table()
     return frame;
 }
 
+void free_page_page_table(uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index)
+{
+    uint32_t* second_level_table = second_level_page_table(page_table, first_level_index);
+    if (second_level_table != FORBIDDEN_ADDRESS)
+    {
+        //On explore la table de niveau 2 a la recherche de la page.
+        if (second_level_table[second_level_index] != 0)
+        {
+            //On supprime l'entrée dans la table de niveau 2.
+            uint32_t frame = (second_level_table[second_level_index] & 0xFFFFF000) / PAGE_SIZE;
+            second_level_table[second_level_index] = 0;
+            //On précise que la frame n'est plus occupée par cette table.
+            set_frame_occupancy_table(frame, 0);
+        }
+    }
+}
+
 uint32_t* create_page_table()
 {
 	//On alloue la table de niveau 1.
@@ -217,7 +235,7 @@ void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint
 	//On ajoute l'entrée à la table de niveau 2.
 	second_level_table[second_level_index] = frame_address | frame_flags;
 	//On note la frame comme occupée.
-    set_frame_occupancy_table(first_level_index*SECOND_LVL_TT_COUNT + second_level_index, 1);
+    set_frame_occupancy_table(frame_address / PAGE_SIZE, 1);
 }
 
 uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb)
@@ -232,7 +250,7 @@ uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb
         uint32_t first_level_index = page / SECOND_LVL_TT_COUNT;
         uint32_t second_level_index = page - first_level_index * SECOND_LVL_TT_COUNT;
 
-        if (free_page_page_table(page_table, first_level_index, second_level_index))
+        if (is_free_page_table(page_table, first_level_index, second_level_index))
         {
             successive_free_page++;
         }

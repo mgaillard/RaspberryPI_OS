@@ -57,4 +57,12 @@ void load_page_table(const uint32_t* table);
  */
 uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size);
 
+/**
+ * Libère une plage de pages mémoires dans une table de pages.
+ * @param page_table La table des pages dans laquelle libérer la mémoire.
+ * @param address L'adresse de début de la plage de pages.
+ * @param size La taille de la mémoire à libérer.
+ */
+void vmem_free(uint32_t* page_table, uint8_t* address, uint32_t size);
+
 #endif

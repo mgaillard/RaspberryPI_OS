@@ -166,7 +166,7 @@ uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size)
 {
 	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
 	//On calcule le nombre de pages nécéssaires.
-	uint32_t page_nb = (size / PAGE_SIZE) + 1;
+	uint32_t page_nb = ((size - 1) / PAGE_SIZE) + 1;
 
 	//On recherche une plage de pages libres consécutives.
 	uint32_t free_pages = find_free_pages_page_table(page_table, page_nb);
@@ -199,4 +199,21 @@ uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size)
 
 	//On retourne l'adresse de la page basse.
 	return (uint8_t*)(free_pages * PAGE_SIZE);
+}
+
+void vmem_free(uint32_t* page_table, uint8_t* address, uint32_t size)
+{
+	//On retouve la page de debut en fonction de l'adresse.
+	uint32_t first_page = (uint32_t)address / PAGE_SIZE;
+	//On calcule le nombre de pages nécéssaires.
+	uint32_t page_nb = ((size - 1) / PAGE_SIZE) + 1;
+	//On desalloue les pages.
+	for (uint32_t page = first_page;page < first_page + page_nb;page++)
+	{
+		//On retrouve pour la page, les index de niveau 1 et de niveau 2.
+	    uint32_t first_level_index = page / SECOND_LVL_TT_COUNT;
+	    uint32_t second_level_index = page - first_level_index * SECOND_LVL_TT_COUNT;
+
+	    free_page_page_table(page_table, first_level_index, second_level_index);
+	}
 }
