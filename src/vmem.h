@@ -29,7 +29,7 @@
 #define DEVICE_SPACE_END 0x20FFFFFF
 
 //Taille de la table d'occupation des frames.
-#define FRAME_OCCUPANCY_TT_SIZE (RAM_LIMIT + 1) / PAGE_SIZE
+#define FRAME_OCCUPANCY_TT_SIZE (DEVICE_SPACE_END + 1) / PAGE_SIZE
 
 /**
  * Initialise la mémoire virtuelle.

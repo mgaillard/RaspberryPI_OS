@@ -87,13 +87,11 @@ void free_second_level_page_table(uint32_t* second_level_table)
 
 void set_frame_occupancy_table(uint32_t frame, uint32_t state)
 {
-    /*
     if (state > 0) {
         frame_occupancy_table[frame] += 1;
     } else {
         frame_occupancy_table[frame] -= 1;
     }
-    */
 }
 
 //----------------------------------------------------------Realisations
@@ -102,13 +100,13 @@ void init_frame_occupancy_table(uint32_t size)
     frame_occupancy_table_size = size;
 	//On alloue la table d'occupation des pages.
 	frame_occupancy_table = kAlloc(frame_occupancy_table_size);
-	/*
+
+    frame_occupancy_table[frame_occupancy_table_size - 1] = 0;
     //On initialise toutes les pages comme occupees.
 	for (int i = 0;i < frame_occupancy_table_size;i++)
 	{
 		frame_occupancy_table[i] = 0;
 	}
-    */
 }
 
 void free_frame_occupancy_table()
