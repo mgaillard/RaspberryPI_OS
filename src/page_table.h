@@ -5,11 +5,7 @@
 
 #define FIRST_LEVEL_FLAGS 0x1
 
-//Table de pagination
-//Ajouter une correspondance dans la table de pagination
-//Supprimer une correspondance dans la table de pagination
-//Recuperer l'adresse d'une table de niveau 2
-//Allouer une table de niveau 1
+///TODO : Supprimer une correspondance dans la table de pagination
 
 /**
  * Initialise la table d'occupation des frames.
@@ -27,6 +23,12 @@ void free_frame_occupancy_table();
  * @param frame Le numéro de la frame.
  */
 uint32_t get_frame_occupancy_table(uint32_t frame);
+
+/**
+ * Retourne le numero d'une frame libre.
+ * Si aucune frame n'est libre, retourne UINT32_MAX.
+ */
+uint32_t find_free_frame_occupancy_table();
 
 /**
  * Crée une table de page vide.
@@ -47,6 +49,15 @@ void free_page_table(uint32_t* page_table);
  * @param frame_flags Les flags à appliquer à la frame.
  */
 void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index, uint32_t frame_address, uint32_t frame_flags);
+
+/**
+ * Trouve page_nb pages libres consecutives dans une table des pages.
+ * Si les pages ne peuvent pas eter trouvées, retourne UINT32_MAX.
+ * @param page_table La table des pages a laquelle ajouter l'entrée.
+ * @param page_nb Le nombre de pages à trouver.
+ * @return Le numéro de la page de la plage de page dont l'adresse est la plus basse.
+ */
+uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb);
 
 /**
  * Traduit une adresse logique selon une table de pagination.

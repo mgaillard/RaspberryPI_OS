@@ -126,7 +126,8 @@ void exit_process(int* pile)
 	//On enregistre son code retour.
 	current_process->returnCode = pile[1];
 	//On libere la pile de ce processus.
-	kFree((void*)(current_process->debut_sp - PROCESS_STACK_SIZE), PROCESS_STACK_SIZE);
+	///TODO : Libérer la pile en utilisant vmem free user land.
+	//kFree((void*)(current_process->debut_sp - PROCESS_STACK_SIZE), PROCESS_STACK_SIZE);
 	//On passe au process suivant.
 	elect();
 	//On restaure le contexte d'execution.
@@ -140,13 +141,13 @@ struct pcb_s* create_process(func_t* entry)
 	//Initialisation de lr au debut de la fonction
 	process_pcb->lr_user = entry;
 	process_pcb->lr_svc = (func_t*)&start_current_process;
-	//Initialisation de la pile du processus : 10ko.
-	//La pile du processus est alloué dans le tas qui grossit vers les adresse hautes.
-	//La pile grandira vers le bas, donc il faut mettre le pointeur de pile en haut de la zone allouée.
-	process_pcb->debut_sp = kAlloc(PROCESS_STACK_SIZE) + PROCESS_STACK_SIZE;
-	process_pcb->sp = process_pcb->debut_sp;
 	//Initialisation de la table des pages du processus.
 	process_pcb->page_table = init_process_translation_table();
+	//Initialisation de la pile du processus : 12ko.
+	//La pile du processus est alloué dans le tas qui grossit vers les adresse hautes.
+	//La pile grandira vers le bas, donc il faut mettre le pointeur de pile en haut de la zone allouée.
+	process_pcb->debut_sp = vmem_alloc_for_userland(process_pcb->page_table, PROCESS_STACK_SIZE) + PROCESS_STACK_SIZE;
+	process_pcb->sp = process_pcb->debut_sp;
 	//Par defaut le CPSR est 0x60000150
 	process_pcb->cpsr = 0x60000150;
 	//Par defaut le processus est dans l'état READY.

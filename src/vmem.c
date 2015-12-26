@@ -3,6 +3,7 @@
 #include "asm_tools.h"
 #include "hw.h"
 #include "page_table.h"
+#include "util.h"
 
 uint32_t* mmu_table_base;
 
@@ -161,10 +162,41 @@ void load_page_table(const uint32_t* table)
 	INVALIDATE_TLB();
 }
 
-/**
- * 
- */
-uint8_t* vmem_alloc_for_userland(struct pcb_s* process, uint32_t size)
+uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size)
 {
-	return 0;
+	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
+	//On calcule le nombre de pages nécéssaires.
+	uint32_t page_nb = (size / PAGE_SIZE) + 1;
+
+	//On recherche une plage de pages libres consécutives.
+	uint32_t free_pages = find_free_pages_page_table(page_table, page_nb);
+	//Si on a trouvé les pages libres.
+	if (free_pages < UINT32_MAX)
+	{
+		//On alloue les pages avec des frames.
+		for (uint32_t page = free_pages;page < free_pages + page_nb;page++)
+		{
+			//On retrouve pour la page, les index de niveau 1 et de niveau 2.
+		    uint32_t first_level_index = page / SECOND_LVL_TT_COUNT;
+		    uint32_t second_level_index = page - first_level_index * SECOND_LVL_TT_COUNT;
+
+		    //On trouve une frame libre.
+		    uint32_t frame = find_free_frame_occupancy_table();
+		    if (frame != UINT32_MAX)
+		    {
+	    		uint32_t frame_address = frame * PAGE_SIZE;
+	    		//On etablit le lien entre page et frame.
+				add_entry_page_table(page_table, first_level_index, second_level_index, frame_address, SECOND_LEVEL_FLAGS);
+		    }
+		    else
+		    {
+		    	//Il n'y a plus de frame libre.
+		    	///TODO: Libérer correctement la mémoire et retourner un pointeur null.
+		    	PANIC();
+		    }
+		}
+	}
+
+	//On retourne l'adresse de la page basse.
+	return (uint8_t*)(free_pages * PAGE_SIZE);
 }

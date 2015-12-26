@@ -51,6 +51,10 @@ void load_kernel_page_table();
  */
 void load_page_table(const uint32_t* table);
 
-uint8_t* vmem_alloc_for_userland(struct pcb_s* process, uint32_t size);
+/**
+ * Alloue des pages en espace utilisateur.
+ * 
+ */
+uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size);
 
 #endif

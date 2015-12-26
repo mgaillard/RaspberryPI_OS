@@ -5,6 +5,7 @@
 
 //-----------------------------------------------------Variables privees
 uint32_t frame_occupancy_table_size;
+uint32_t frame_occupancy_table_last_free_frame;
 uint8_t* frame_occupancy_table;
 
 //-----------------------------------------------------Fonctions privees
@@ -13,6 +14,14 @@ uint8_t* frame_occupancy_table;
  * Si la table de niveau 2 n'est pas définie, retourne la constante FORBIDDEN_ADDRESS.
  */
 uint32_t* second_level_page_table(const uint32_t* page_table, uint32_t first_level_index);
+
+/**
+ * Retourne 1 si une page est libre, 0 sinon.
+ * @param page_table La table des pages dans laquelle rechercher la page.
+ * @param first_level_index L'index de niveau 1 de la page.
+ * @param second_level_index L'index de niveau 2 de la page.
+ */
+int free_page_page_table(const uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index);
 
 /**
  * Crée une table de niveau 2 vide.
@@ -56,6 +65,21 @@ uint32_t* second_level_page_table(const uint32_t* page_table, uint32_t first_lev
     second_level_table = first_level_descriptor & 0xFFFFFC00;
     
     return (uint32_t*)second_level_table;
+}
+
+int free_page_page_table(const uint32_t* page_table, uint32_t first_level_index, uint32_t second_level_index)
+{
+    uint32_t* second_level_table = second_level_page_table(page_table, first_level_index);
+    if (second_level_table != FORBIDDEN_ADDRESS)
+    {
+        //On explore la table de niveau 2 a la recherche de la page.
+        if (second_level_table[second_level_index] != 0)
+        {
+            return 0;
+        }
+    }
+    //La page n'a pas été trouvée, elle est libre.
+    return 1;
 }
 
 uint32_t* create_second_level_page_table()
@@ -107,6 +131,8 @@ void init_frame_occupancy_table(uint32_t size)
 	{
 		frame_occupancy_table[i] = 0;
 	}
+    //On initialise la derniere frame libre.
+    frame_occupancy_table_last_free_frame = 0;
 }
 
 void free_frame_occupancy_table()
@@ -117,6 +143,36 @@ void free_frame_occupancy_table()
 uint32_t get_frame_occupancy_table(uint32_t frame)
 {
     return frame_occupancy_table[frame];
+}
+
+uint32_t find_free_frame_occupancy_table()
+{
+    //A partir de la dernière frame libre, on trouve une frame libre.
+    uint32_t frame = frame_occupancy_table_last_free_frame + 1;
+    //Tant que la frame considerée n'est pas libre et que l'on n'a pas testé toutes les frames de la table.
+    while (frame_occupancy_table[frame] > 0 && frame != frame_occupancy_table_last_free_frame)
+    {
+        //On teste la frame suivante.
+        frame += 1;
+        //Si on dépasse la taille de la table d'ocupation, on revient au début.
+        if (frame >= frame_occupancy_table_size)
+        {
+            frame = 0;
+        }
+    }
+
+    //On vérifie que la table n'est pas pleine.
+    if (frame_occupancy_table[frame] == 0 && frame != frame_occupancy_table_last_free_frame)
+    {
+        frame_occupancy_table_last_free_frame = frame;
+    }
+    else
+    {
+        //Si la table est pleine, aucune frame n'est libre. On retourne UINT32_MAX.
+        frame = UINT32_MAX;
+    }
+
+    return frame;
 }
 
 uint32_t* create_page_table()
@@ -162,6 +218,37 @@ void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint
 	second_level_table[second_level_index] = frame_address | frame_flags;
 	//On note la frame comme occupée.
     set_frame_occupancy_table(first_level_index*SECOND_LVL_TT_COUNT + second_level_index, 1);
+}
+
+uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb)
+{
+    const uint32_t MAX_PAGE = UINT32_MAX / PAGE_SIZE;
+
+    uint32_t successive_free_page = 0;
+    //On fait correspondre les adresses logiques et physiques du noyau.
+    for (int page = 0;page < MAX_PAGE;page++)
+    {
+        //On retrouve pour la page, les index de niveau 1 et de niveau 2.
+        uint32_t first_level_index = page / SECOND_LVL_TT_COUNT;
+        uint32_t second_level_index = page - first_level_index * SECOND_LVL_TT_COUNT;
+
+        if (free_page_page_table(page_table, first_level_index, second_level_index))
+        {
+            successive_free_page++;
+        }
+        else
+        {
+            successive_free_page = 0;
+        }
+
+        //On a trouve un enchainement de page_nb pages libres consecutives.
+        if (successive_free_page >= page_nb)
+        {
+            return page + 1 - page_nb;
+        }
+    }
+    //On ne peut pas trouver assez de pges libres.
+    return UINT32_MAX;
 }
 
 uint32_t vmem_translate(uint32_t va, uint32_t* page_table)

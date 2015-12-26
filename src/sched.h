@@ -2,9 +2,10 @@
 #define SCHED_H
 
 #include <inttypes.h>
+#include "vmem.h"
 
 //La taille de la stack allouée aux processus en octets.
-#define PROCESS_STACK_SIZE 10*1024
+#define PROCESS_STACK_SIZE 3*PAGE_SIZE
 
 //Des constantes pour acceder aux cases memoires de struct pcb_s.
 #define PCB_OFFSET_LR_USER sizeof(((struct pcb_s *)0)->registers)
