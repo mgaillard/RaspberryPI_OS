@@ -146,7 +146,7 @@ struct pcb_s* create_process(func_t* entry)
 	//Initialisation de la pile du processus : 12ko.
 	//La pile du processus est alloué dans le tas qui grossit vers les adresse hautes.
 	//La pile grandira vers le bas, donc il faut mettre le pointeur de pile en haut de la zone allouée.
-	process_pcb->debut_sp = vmem_alloc_for_userland(process_pcb->page_table, PROCESS_STACK_SIZE) + PROCESS_STACK_SIZE;
+	process_pcb->debut_sp = vmem_alloc_for_userland(process_pcb->page_table, PROCESS_STACK_SIZE, UINT32_MAX, DOWN) + PROCESS_STACK_SIZE;
 	process_pcb->sp = process_pcb->debut_sp;
 	//Par defaut le CPSR est 0x60000150
 	process_pcb->cpsr = 0x60000150;

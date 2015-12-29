@@ -238,13 +238,24 @@ void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint
     set_frame_occupancy_table(frame_address / PAGE_SIZE, 1);
 }
 
-uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb)
+uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb, uint32_t start_page, int direction)
 {
-    const uint32_t MAX_PAGE = UINT32_MAX / PAGE_SIZE;
+    const int32_t MAX_PAGE = UINT32_MAX / PAGE_SIZE;
 
-    uint32_t successive_free_page = 0;
-    //On fait correspondre les adresses logiques et physiques du noyau.
-    for (int page = 0;page < MAX_PAGE;page++)
+    int32_t successive_free_page = 0;
+    
+    //On détermine l'incrément de page en fonction de la direction.
+    int32_t page_increment;
+    if (direction >= 0)
+    {
+        page_increment = 1;
+    }
+    else
+    {
+        page_increment = -1;
+    }
+
+    for (int32_t page = start_page;page >= 0 && page <= MAX_PAGE;page += page_increment)
     {
         //On retrouve pour la page, les index de niveau 1 et de niveau 2.
         uint32_t first_level_index = page / SECOND_LVL_TT_COUNT;
@@ -262,7 +273,15 @@ uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb
         //On a trouve un enchainement de page_nb pages libres consecutives.
         if (successive_free_page >= page_nb)
         {
-            return page + 1 - page_nb;
+            //Selon la direction on retourne la page la plus basse.
+            if (direction >= 0)
+            {
+                return page + 1 - page_nb;
+            }
+            else
+            {
+                return page;
+            }
         }
     }
     //On ne peut pas trouver assez de pges libres.

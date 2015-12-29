@@ -55,7 +55,7 @@ void load_page_table(const uint32_t* table);
  * Alloue des pages en espace utilisateur.
  * 
  */
-uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size);
+uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size, uint32_t address, int direction);
 
 /**
  * Libère une plage de pages mémoires dans une table de pages.

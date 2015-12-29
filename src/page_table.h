@@ -4,6 +4,8 @@
 #include <inttypes.h>
 
 #define FIRST_LEVEL_FLAGS 0x1
+#define UP 1
+#define DOWN -1
 
 /**
  * Initialise la table d'occupation des frames.
@@ -53,9 +55,11 @@ void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint
  * Si les pages ne peuvent pas etre trouvées, retourne UINT32_MAX.
  * @param page_table La table des pages a laquelle ajouter l'entrée.
  * @param page_nb Le nombre de pages à trouver.
+ * @param start_page Page à partir de laquelle chercher les pages libres.
+ * @param direction La direction dans laquelle rechercher les pages libres. Positif ou nul pour rechercher vers les adresses hautes, négatif pour les adresses basses.
  * @return Le numéro de la page de la plage de page dont l'adresse est la plus basse.
  */
-uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb);
+uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb, uint32_t start_page, int direction);
 
 /**
  * Libère une page dans une table des pages.

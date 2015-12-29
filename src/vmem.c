@@ -162,14 +162,15 @@ void load_page_table(const uint32_t* table)
 	INVALIDATE_TLB();
 }
 
-uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size)
+uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size, uint32_t address, int direction)
 {
 	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
 	//On calcule le nombre de pages nécéssaires.
 	uint32_t page_nb = ((size - 1) / PAGE_SIZE) + 1;
 
 	//On recherche une plage de pages libres consécutives.
-	uint32_t free_pages = find_free_pages_page_table(page_table, page_nb);
+	uint32_t start_page = address / PAGE_SIZE;
+	uint32_t free_pages = find_free_pages_page_table(page_table, page_nb, start_page, direction);
 	//Si on a trouvé les pages libres.
 	if (free_pages < UINT32_MAX)
 	{
