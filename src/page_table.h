@@ -50,7 +50,7 @@ void add_entry_page_table(uint32_t* page_table, uint32_t first_level_index, uint
 
 /**
  * Trouve page_nb pages libres consecutives dans une table des pages.
- * Si les pages ne peuvent pas eter trouvées, retourne UINT32_MAX.
+ * Si les pages ne peuvent pas etre trouvées, retourne UINT32_MAX.
  * @param page_table La table des pages a laquelle ajouter l'entrée.
  * @param page_nb Le nombre de pages à trouver.
  * @return Le numéro de la page de la plage de page dont l'adresse est la plus basse.

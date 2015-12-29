@@ -127,7 +127,7 @@ void exit_process(int* pile)
 	current_process->returnCode = pile[1];
 	//On libere la pile de ce processus.
 	vmem_free(current_process->page_table, current_process->debut_sp - PROCESS_STACK_SIZE, PROCESS_STACK_SIZE);
-	free_page_table(process->page_table);
+	free_page_table(current_process->page_table);
 	//On passe au process suivant.
 	elect();
 	//On restaure le contexte d'execution.
