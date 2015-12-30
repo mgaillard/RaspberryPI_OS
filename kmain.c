@@ -8,12 +8,25 @@
 
 int user_process()
 {
-    int i = 0;
-    while(i < 10)
+    const int TAILLE = 10;
+    int* tableau = (int*)sys_malloc(TAILLE * sizeof(int));
+
+    //Si un problème d'allocation est survenu.
+    if (tableau != NULL)
     {
-		i++;
+        for (int i = 0;i < TAILLE;i++)
+        {
+            tableau[i] = i;
+        }
+
+        sys_free(tableau);
+
+        return EXIT_SUCCESS;
     }
-    return EXIT_SUCCESS;
+    else
+    {
+        return EXIT_FAILURE;
+    }
 }
 
 int kmain( void )

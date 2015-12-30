@@ -4,8 +4,6 @@
 #include <inttypes.h>
 
 #define FIRST_LEVEL_FLAGS 0x1
-#define UP 1
-#define DOWN -1
 
 /**
  * Initialise la table d'occupation des frames.

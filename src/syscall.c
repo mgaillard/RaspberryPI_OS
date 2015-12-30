@@ -15,6 +15,8 @@ void do_sys_free_process(int* pile);
 void do_sys_create_process(int* pile);
 void do_sys_process_state(int* pile);
 void do_sys_process_return_code(int* pile);
+void do_sys_malloc(int* pile);
+void do_sys_free(int* pile);
 
 //-----------------------------------------------------------Réalisation
 
@@ -161,6 +163,31 @@ int sys_process_return_code(struct pcb_s* process)
 	return returnCode;
 }
 
+void* sys_malloc(uint32_t size)
+{
+	void* address;
+	//On donne le numero d'appel système dans R0.
+	__asm("mov r0, #12");
+	//Le parametre est dans le registre R1.
+	__asm("mov r1, %0" : : "r"(size) : "r0");
+	//On fait une interruption logicielle.
+	__asm("swi #0");
+	//On recupère le résultat de l'appel système depuis le registre R0.
+	__asm("mov %0, r0" : "=r"(address));
+
+	return address;
+}
+
+void sys_free(void* address)
+{
+	//On donne le numero d'appel système dans R0.
+	__asm("mov r0, #13");
+	//Le parametre est dans le registre R1.
+	__asm("mov r1, %0" : : "r"(address) : "r0");
+	//On fait une interruption logicielle.
+	__asm("swi #0");
+}
+
 void __attribute__((naked)) swi_handler()
 {
 	int numeroAppelSysteme;
@@ -211,6 +238,12 @@ void __attribute__((naked)) swi_handler()
 			break;
 		case 11:
 			do_sys_process_return_code(pile);
+			break;
+		case 12:
+			do_sys_malloc(pile);
+			break;
+		case 13:
+			do_sys_free(pile);
 			break;
 		default:
 			//L'appel système demande n'est pas connu.
@@ -299,4 +332,26 @@ void do_sys_process_return_code(int* pile)
 	struct pcb_s* process = (struct pcb_s*)pile[1];
 	//On retourne le code par le registre R0 de la pile.
 	pile[0] = (int)process->returnCode;
+}
+
+void do_sys_malloc(int* pile)
+{
+	uint8_t* address;
+	uint32_t size = (uint32_t)pile[1];
+	//On recupère le tas et la table des pages du processus courant.
+	MemoryBlock* process_heap = get_current_process_heap();
+	uint32_t* process_page_table = get_current_process_page_table();
+	//On alloue le bloc pour le processus courant.
+	address = heap_alloc(process_heap, process_page_table, size);
+	//On retourne l'adresse du bloc alloué.
+	pile[0] = (int)address;
+}
+
+void do_sys_free(int* pile)
+{
+	void* address = (void*)pile[1];
+	//On recupère le tas du processus courant.
+	MemoryBlock* process_heap = get_current_process_heap();
+	//On libère ce bloc.
+	heap_free(process_heap, address);
 }

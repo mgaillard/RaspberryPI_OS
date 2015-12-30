@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include "vmem.h"
+#include "heap.h"
 
 //La taille de la stack allouée aux processus en octets.
 #define PROCESS_STACK_SIZE 3*PAGE_SIZE
@@ -40,6 +41,8 @@ struct pcb_s
 	uint32_t* page_table;
 	//Le debut de la pile.
 	void* debut_sp;
+	//Le tas du processus;
+	MemoryBlock* heap;
 	//L'état du processus.
 	ProcessState state;
 	//Le code retour du processus.
@@ -66,6 +69,8 @@ void free_process(struct pcb_s* process);
 //Handler d'interruption du timer.
 void irq_handler();
 //Retourne la table des pages du processus courant.
-const uint32_t* get_current_process_page_table();
+uint32_t* get_current_process_page_table();
+//Retourne le tas du processus courant.
+MemoryBlock* get_current_process_heap();
 
 #endif

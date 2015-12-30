@@ -127,6 +127,9 @@ void exit_process(int* pile)
 	current_process->returnCode = pile[1];
 	//On libere la pile de ce processus.
 	vmem_free(current_process->page_table, current_process->debut_sp - PROCESS_STACK_SIZE, PROCESS_STACK_SIZE);
+	//On libère le tas de ce processus.
+	heap_free_all(current_process->heap, current_process->page_table);
+	//On libère toute la mémoire de ce processus.
 	free_page_table(current_process->page_table);
 	//On passe au process suivant.
 	elect();
@@ -148,11 +151,12 @@ struct pcb_s* create_process(func_t* entry)
 	//La pile grandira vers le bas, donc il faut mettre le pointeur de pile en haut de la zone allouée.
 	process_pcb->debut_sp = vmem_alloc_for_userland(process_pcb->page_table, PROCESS_STACK_SIZE, UINT32_MAX, DOWN) + PROCESS_STACK_SIZE;
 	process_pcb->sp = process_pcb->debut_sp;
+	//On initialise le tas.
+	process_pcb->heap = heap_init(0);
 	//Par defaut le CPSR est 0x60000150
 	process_pcb->cpsr = 0x60000150;
 	//Par defaut le processus est dans l'état READY.
 	process_pcb->state = READY;
-	
 	//On initialise le code de retour.
 	process_pcb->returnCode = -1;
 	//On insere la PCB dans la liste circulaire du round-robin, juste apres current_process.
@@ -270,7 +274,12 @@ void __attribute__((naked)) irq_handler()
 	__asm("ldmfd sp!, {r0-r12, pc}^");
 }
 
-const uint32_t* get_current_process_page_table()
+uint32_t* get_current_process_page_table()
 {
 	return current_process->page_table;
+}
+
+MemoryBlock* get_current_process_heap()
+{
+	return current_process->heap;
 }

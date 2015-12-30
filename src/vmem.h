@@ -4,6 +4,10 @@
 #include <inttypes.h>
 #include "sched.h"
 
+//Direction de l'allocation en mémoire.
+#define UP 1
+#define DOWN -1
+
 //Taille d'une page.
 #define PAGE_SIZE 4096
 
