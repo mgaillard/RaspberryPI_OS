@@ -105,6 +105,47 @@ void* heap_alloc(MemoryBlock* heap, uint32_t* page_table, uint32_t size)
 void heap_free(MemoryBlock* heap, void* address)
 {
 	//On recherche le bloc débutant à cette adresse et on le libère.
+	MemoryBlock* current_block = heap;
+	while (current_block != NULL && current_block->address != address)
+	{
+		current_block = current_block->next;
+	}
+	//Si le bloc débutant à cette adresse a été trouvé.
+	if (current_block != NULL)
+	{
+		//On libère le bloc.
+		current_block->type = FREE;
+		//Si il y a un bloc vide avant, on fusionne les deux blocs.
+		if (current_block->previous != NULL && current_block->previous->type == FREE)
+		{
+			current_block->previous->size += current_block->size;
+			//On reconstitue les liens.
+			current_block->previous->next = current_block->next;
+			//Si il y a effectivement un noeud suivant.
+			if (current_block->next != NULL)
+			{
+				current_block->next->previous = current_block->previous;
+			}
+			//On libère le bloc courant.
+			MemoryBlock* previous_block = current_block->previous;
+			kFree((void*)current_block, sizeof(MemoryBlock));
+			current_block = previous_block;
+		}
+		//Si il y a un bloc vide après, on fusionne les deux blocs.
+		if (current_block->next != NULL && current_block->next->type == FREE)
+		{
+			current_block->size += current_block->next->size;
+			MemoryBlock* next_block = current_block->next;
+
+			current_block->next = current_block->next->next;
+			//S'il y a un bloc après le suivant.
+			if (current_block->next != NULL)
+			{
+				current_block->next->previous = current_block;
+			}
+			kFree((void*)next_block, sizeof(MemoryBlock));
+		}
+	}
 }
 
 void heap_free_all(MemoryBlock* heap, uint32_t* page_table)
