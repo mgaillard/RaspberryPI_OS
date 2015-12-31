@@ -5,6 +5,24 @@
 #include "asm_tools.h"
 #include "vmem.h"
 
+//----------------------------------------------------------Types prives
+enum SysCalls
+{
+	SYS_REBOOT,
+	SYS_NOP,
+	SYS_SET_TIME,
+	SYS_GET_TIME,
+	SYS_YIELD_TO,
+	SYS_YIELD,
+	SYS_EXIT,
+	SYS_FREE_PROCESS,
+	SYS_CREATE_PROCESS,
+	SYS_PROCESS_STATE,
+	SYS_PROCESS_RETURN_CODE,
+	SYS_MALLOC,
+	SYS_FREE
+};
+
 //------------------------------------------------------Fonction privées
 void swi_handler();
 void do_sys_reboot();
@@ -23,7 +41,7 @@ void do_sys_free(int* pile);
 void sys_reboot()
 {
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #1");
+	__asm("mov r0, %0" : : "I"(SYS_REBOOT));
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 }
@@ -31,7 +49,7 @@ void sys_reboot()
 void sys_nop()
 {
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #2");
+	__asm("mov r0, %0" : : "I"(SYS_NOP));
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 }
@@ -43,7 +61,7 @@ void sys_settime(uint64_t date_ms)
 	__asm("mov r2,r1" : : : "r0");
 	__asm("mov r1,r0" : : : "r2");
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #3" : : : "r1", "r2");
+	__asm("mov r0, %0" : : "I"(SYS_SET_TIME) : "r1", "r2");
 	
 	//On fait une interruption logicielle.
 	__asm("swi #0");
@@ -54,7 +72,7 @@ uint64_t sys_gettime()
 	uint32_t date_lowbits, date_highbits;
 	uint64_t date_ms;
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #4");
+	__asm("mov r0, %0" : : "I"(SYS_GET_TIME));
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 	//On recupère le résultat de l'appel système depuis les registres R0 et R1.
@@ -73,7 +91,7 @@ void sys_yieldto(struct pcb_s* dest)
 	//On met le parametre dans le registre R1.
 	__asm("mov r1,r0");
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #5" : : : "r1");
+	__asm("mov r0, %0" : : "I"(SYS_YIELD_TO) : "r1");
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 }
@@ -81,7 +99,7 @@ void sys_yieldto(struct pcb_s* dest)
 void sys_yield()
 {
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #6" : : : "r1");
+	__asm("mov r0, %0" : : "I"(SYS_YIELD));
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 }
@@ -91,7 +109,7 @@ void sys_exit(int status)
 	//On met le parametre dans le registre R1.
 	__asm("mov r1,r0");
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #7" : : : "r1");
+	__asm("mov r0, %0" : : "I"(SYS_EXIT) : "r1");
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 }
@@ -111,7 +129,7 @@ int sys_wait(struct pcb_s* dest)
 	//On met le parametre dans le registre R1.
 	__asm("mov r1, %0" : : "r"(dest));
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #8" : : : "r1");
+	__asm("mov r0, %0" : : "I"(SYS_FREE_PROCESS) : "r1");
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 	
@@ -122,7 +140,7 @@ struct pcb_s* sys_create_process(func_t* entry)
 {
 	struct pcb_s* process;
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #9");
+	__asm("mov r0, %0" : : "I"(SYS_CREATE_PROCESS));
 	//Le parametre est dans le registre R1.
 	__asm("mov r1, %0" : : "r"(entry) : "r0");
 	//On fait une interruption logicielle.
@@ -137,7 +155,7 @@ ProcessState sys_process_state(struct pcb_s* process)
 {
 	ProcessState state;
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #10");
+	__asm("mov r0, %0" : : "I"(SYS_PROCESS_STATE));
 	//Le parametre est dans le registre R1.
 	__asm("mov r1, %0" : : "r"(process) : "r0");
 	//On fait une interruption logicielle.
@@ -152,7 +170,7 @@ int sys_process_return_code(struct pcb_s* process)
 {
 	int returnCode;
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #11");
+	__asm("mov r0, %0" : : "I"(SYS_PROCESS_RETURN_CODE));
 	//Le parametre est dans le registre R1.
 	__asm("mov r1, %0" : : "r"(process) : "r0");
 	//On fait une interruption logicielle.
@@ -167,7 +185,7 @@ void* sys_malloc(uint32_t size)
 {
 	void* address;
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #12");
+	__asm("mov r0, %0" : : "I"(SYS_MALLOC));
 	//Le parametre est dans le registre R1.
 	__asm("mov r1, %0" : : "r"(size) : "r0");
 	//On fait une interruption logicielle.
@@ -181,7 +199,7 @@ void* sys_malloc(uint32_t size)
 void sys_free(void* address)
 {
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, #13");
+	__asm("mov r0, %0" : : "I"(SYS_FREE));
 	//Le parametre est dans le registre R1.
 	__asm("mov r1, %0" : : "r"(address) : "r0");
 	//On fait une interruption logicielle.
@@ -206,43 +224,43 @@ void __attribute__((naked)) swi_handler()
 	
 	switch(numeroAppelSysteme)
 	{
-		case 1:
+		case SYS_REBOOT:
 			do_sys_reboot();
 			break;
-		case 2:
+		case SYS_NOP:
 			do_sys_nop();
 			break;
-		case 3:
+		case SYS_SET_TIME:
 			do_sys_settime(pile);
 			break;
-		case 4:
+		case SYS_GET_TIME:
 			do_sys_gettime(pile);
 			break;
-		case 5:
+		case SYS_YIELD_TO:
 			yieldto(pile);
 			break;
-		case 6:
+		case SYS_YIELD:
 			yield(pile);
 			break;
-		case 7:
+		case SYS_EXIT:
 			exit_process(pile);
 			break;
-		case 8:
+		case SYS_FREE_PROCESS:
 			do_sys_free_process(pile);
 			break;
-		case 9:
+		case SYS_CREATE_PROCESS:
 			do_sys_create_process(pile);
 			break;
-		case 10:
+		case SYS_PROCESS_STATE:
 			do_sys_process_state(pile);
 			break;
-		case 11:
+		case SYS_PROCESS_RETURN_CODE:
 			do_sys_process_return_code(pile);
 			break;
-		case 12:
+		case SYS_MALLOC:
 			do_sys_malloc(pile);
 			break;
-		case 13:
+		case SYS_FREE:
 			do_sys_free(pile);
 			break;
 		default:
