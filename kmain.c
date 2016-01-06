@@ -5,6 +5,7 @@
 #include "hw.h"
 #include "asm_tools.h"
 #include "vmem.h"
+#include "fb.h"
 
 int process_dynamic_alloc()
 {
@@ -53,6 +54,7 @@ int kmain( void )
     struct pcb_s* process_on;
     struct pcb_s* process_off;
     
+    FramebufferInitialize();
     sched_init();
 
     process_alloc = sys_create_process((func_t*)&process_dynamic_alloc, 20);

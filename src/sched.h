@@ -9,7 +9,7 @@
 #define PROCESS_STACK_SIZE 3*PAGE_SIZE
 
 //La période pendant laquelle tous les processus seront exécutés.
-#define TIME_SLICE 10000
+#define TIME_SLICE 8192
 
 //Des constantes pour acceder aux cases memoires de struct pcb_s.
 #define PCB_OFFSET_LR_USER sizeof(((struct pcb_s *)0)->registers)
