@@ -4,6 +4,7 @@
 #include "hw.h"
 #include "page_table.h"
 #include "util.h"
+#include "syscall.h"
 
 uint32_t* mmu_table_base;
 
@@ -217,4 +218,40 @@ void vmem_free(uint32_t* page_table, uint8_t* address, uint32_t size)
 
 	    free_page_page_table(page_table, first_level_index, second_level_index);
 	}
+}
+
+void __attribute__((naked)) data_handler()
+{
+	int* pile;
+	uint32_t fault_cause;
+	uint32_t fault_address;
+
+	DISABLE_IRQ();
+	//Sauvegarde du contexte d'execution.
+	__asm("stmfd sp!, {r0-r12, lr}");
+	//Memorisation du sommet de pile pour lecture des parametres.
+	__asm("mov %0, sp" : "=r"(pile));
+
+	//On passe sur la table de traduction du noyau.
+	load_kernel_page_table();
+
+	//On lit les informations de l'erreur mémoire.
+	__asm("mrc p15, 0, %0, c5, c0, 0" : "=r"(fault_cause));
+	__asm("mrc p15, 0, %0, c6, c0, 0" : "=r"(fault_address));
+
+	//On passe en mode SVC pour le changement de contexte.
+	__asm("cps 0x13");
+	//On quitte le processus courant.
+	exit_process(pile);
+	//On reviens au précédent mode d'exécution.
+	__asm("cps 0x17");
+
+	//On repasse sur la table des pages du processus suivant.
+	load_page_table(get_current_process_page_table());
+
+	//On reactive le timer.
+	ENABLE_TIMER_IRQ();
+
+	//Restauration du contexte d'execution et retour .
+	__asm("ldmfd sp!, {r0-r12, pc}^");
 }

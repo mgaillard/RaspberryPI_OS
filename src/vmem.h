@@ -69,4 +69,9 @@ uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size, uint32_t a
  */
 void vmem_free(uint32_t* page_table, uint8_t* address, uint32_t size);
 
+/**
+ * Handler de l'évenement data abort.
+ */
+void __attribute__((naked)) data_handler();
+
 #endif

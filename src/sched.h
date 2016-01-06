@@ -15,6 +15,9 @@
 #define PCB_OFFSET_CPSR PCB_OFFSET_SP + sizeof(((struct pcb_s *)0)->sp)
 #define PCB_OFFSET_PAGE_TABLE PCB_OFFSET_CPSR + sizeof(((struct pcb_s *)0)->cpsr)
 
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE 1
+
 //-----------------------------------------------------------------Types
 typedef int(func_t) (void);
 

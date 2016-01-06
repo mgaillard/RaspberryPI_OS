@@ -4,9 +4,6 @@
 #include <inttypes.h>
 #include "sched.h"
 
-#define EXIT_SUCCESS 0
-#define EXIT_FAILURE 1
-
 /*************** Functions declaration mode User *****************/
 void sys_reboot();
 void sys_nop();
