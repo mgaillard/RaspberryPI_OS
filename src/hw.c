@@ -47,7 +47,7 @@ void
 set_next_tick(uint32_t time_ms)
 {
     uint32_t date_lowbits = Get32(CLO);
-    date_lowbits += (uint32_t) (time_ms * SYS_TIMER_CLOCK_div_1000) ;
+    date_lowbits += (uint32_t) (time_ms * CLOCK_PATCH) ;
     Set32(C1, date_lowbits);
 }
 

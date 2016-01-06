@@ -44,6 +44,7 @@
 #define SYS_TIMER_CLOCK 250000000 /* We use the system timer, running at 250MHz */
 #define SYS_TIMER_CLOCK_div_1000 250000
 #define DEFAULT_TIMER_INTERVAL 2500000 /* 10 ms */
+#define CLOCK_PATCH 1111
 
 #define ENABLE_TIMER_IRQ() Set32(CS,2)
 #define DISABLE_TIMER_IRQ() Set32(CS,~2);
@@ -119,5 +120,7 @@ void led_blink(void);
 
 void hw_init();
 void terminate_kernel();
+
+uint64_t divide(uint64_t x, uint64_t y);
 
 #endif

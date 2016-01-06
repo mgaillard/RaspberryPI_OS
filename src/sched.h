@@ -8,6 +8,9 @@
 //La taille de la stack allouée aux processus en octets.
 #define PROCESS_STACK_SIZE 3*PAGE_SIZE
 
+//La période pendant laquelle tous les processus seront exécutés.
+#define TIME_SLICE 10000
+
 //Des constantes pour acceder aux cases memoires de struct pcb_s.
 #define PCB_OFFSET_LR_USER sizeof(((struct pcb_s *)0)->registers)
 #define PCB_OFFSET_LR_SVC PCB_OFFSET_LR_USER + sizeof(((struct pcb_s *)0)->lr_user)
@@ -47,6 +50,8 @@ struct pcb_s
 	ProcessState state;
 	//Le code retour du processus.
 	int returnCode;
+	//Le poids du processus.
+	uint32_t weight;
 	//Le processus precedent dans l'ordre du round robin.
 	struct pcb_s* previous_process;
 	//Le processus suivant dans l'ordre du round robin.
@@ -63,7 +68,7 @@ void yield(int* pile);
 //Termine le processus et et passe au processus suivant.
 void exit_process(int* pile);
 //Cree et alloue la memoire pour un nouveau processus.
-struct pcb_s* create_process(func_t* entry);
+struct pcb_s* create_process(func_t* entry, int32_t niceness);
 //Libere la PCB d'un processus et le retire de la liste circulaire.
 void free_process(struct pcb_s* process);
 //Handler d'interruption du timer.
