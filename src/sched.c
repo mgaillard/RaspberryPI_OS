@@ -11,6 +11,7 @@
 
 struct pcb_s *current_process;
 struct pcb_s kmain_process;
+uint32_t total_weight;
 
 //------------------------------------------------------Fonction privées
 
@@ -27,6 +28,10 @@ void save_context(int* pile);
 //Restaure le contexte dans la pile a partir des valeurs presents dans le current_process.
 //Restaure aussi les valeurs des registres lr et sp du mode user.
 void restore_context(int* pile);
+//Convertit une niceness en poids.
+uint32_t niceness_to_weight(int niceness);
+//Convertit le poids d'un processus en temps d'execution.
+uint32_t weight_to_timeslice(uint32_t weight);
 
 
 //-----------------------------------------------------------Réalisation
@@ -52,8 +57,13 @@ void sched_init()
 	load_page_table(kmain_process.page_table);
 	//On initialise le code de retour.
 	kmain_process.returnCode = -1;
+	//On initialise la priorité du processus kmain.
+	kmain_process.weight = niceness_to_weight(20);
+	total_weight += kmain_process.weight;
 	//On precise que c'est le processus courant.
 	current_process = &kmain_process;
+	//On configure la duree avant le prochain changement de contexte.
+    set_next_tick(weight_to_timeslice(current_process->weight));
 }
 
 void elect()
@@ -91,6 +101,8 @@ void change_process(struct pcb_s* next_process)
 	current_process = next_process;
 	//On met le nouveau processus courant dans l'etat RUNNING.
 	current_process->state = RUNNING;
+    //On configure la duree avant le prochain changement de contexte.
+    set_next_tick(weight_to_timeslice(current_process->weight));
 }
 
 void yieldto(int* pile)
@@ -118,6 +130,8 @@ void exit_process(int* pile)
 {
 	//On sauvegarde le contexte d'execution.
 	save_context(pile);
+	//On retire le weight du processus du total_weight.
+    total_weight -= current_process->weight;
 	//On marque le current_process comme termine.
 	//La PCB reste dans la liste circulaire dans l'etat TERMINATED.
 	//Grace a un autre appel systeme on pourra recuperer son status et liberer la pcb.
@@ -137,7 +151,7 @@ void exit_process(int* pile)
 	restore_context(pile);
 }
 
-struct pcb_s* create_process(func_t* entry)
+struct pcb_s* create_process(func_t* entry, int32_t niceness)
 {
 	//Allocation dynamique d'un struct pcb_s pour le nouveau processus.
 	struct pcb_s* process_pcb = (struct pcb_s*)kAlloc(sizeof(struct pcb_s));
@@ -159,6 +173,9 @@ struct pcb_s* create_process(func_t* entry)
 	process_pcb->state = READY;
 	//On initialise le code de retour.
 	process_pcb->returnCode = -1;
+	//Calcul du poids en fonction de la niceness
+    process_pcb->weight = niceness_to_weight(niceness);
+    total_weight += process_pcb->weight;
 	//On insere la PCB dans la liste circulaire du round-robin, juste apres current_process.
 	process_pcb->next_process = current_process->next_process;
 	process_pcb->previous_process = current_process;
@@ -267,7 +284,6 @@ void __attribute__((naked)) irq_handler()
 	load_page_table(current_process->page_table);
 	
 	//On rearme le timer.
-	set_next_tick_default();
 	ENABLE_TIMER_IRQ();
 	
 	//Restauration du contexte d'execution et retour .
@@ -282,4 +298,19 @@ uint32_t* get_current_process_page_table()
 MemoryBlock* get_current_process_heap()
 {
 	return current_process->heap;
+}
+
+uint32_t niceness_to_weight(int niceness)
+{
+    return (21-niceness);
+}
+
+uint32_t weight_to_timeslice(uint32_t weight)
+{
+    uint32_t time = (uint32_t)divide((weight * TIME_SLICE),total_weight);
+    if (time == 0)
+    {
+		time = 1;
+	}
+    return time;
 }

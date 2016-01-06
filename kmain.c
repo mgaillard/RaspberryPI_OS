@@ -5,8 +5,9 @@
 #include "hw.h"
 #include "asm_tools.h"
 #include "vmem.h"
+#include "fb.h"
 
-int user_process()
+int process_dynamic_alloc()
 {
     const int TAILLE = 10;
     int* tableau = (int*)sys_malloc(TAILLE * sizeof(int));
@@ -29,14 +30,36 @@ int user_process()
     }
 }
 
+int process_led_on()
+{
+	for (;;)
+	{
+		led_on();
+	}
+	return EXIT_SUCCESS;
+}
+
+int process_led_off()
+{
+	for (;;)
+	{
+		led_off();
+	}
+	return EXIT_SUCCESS;
+}
+
 int kmain( void )
 {
-    int status;
-    struct pcb_s* process;
+    struct pcb_s* process_alloc;
+    struct pcb_s* process_on;
+    struct pcb_s* process_off;
     
+    FramebufferInitialize();
     sched_init();
 
-    process = sys_create_process((func_t*)&user_process);
+    process_alloc = sys_create_process((func_t*)&process_dynamic_alloc, 20);
+    process_on = sys_create_process((func_t*)&process_led_on, 10);
+    process_off = sys_create_process((func_t*)&process_led_off, 10);
 	
 	// ******************************************
 	// switch CPU to USER mode
@@ -48,9 +71,9 @@ int kmain( void )
     // ******************************************
 	
 	//On attend la terminaison de notre processus.
-    status = sys_wait(process);
-    
-    status++;
+    sys_wait(process_alloc);
+    sys_wait(process_on);
+    sys_wait(process_off);
 	
 	return 0;
 }

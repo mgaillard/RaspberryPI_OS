@@ -13,7 +13,7 @@ void sys_yieldto(struct pcb_s* dest);
 void sys_yield();
 void sys_exit(int status);
 int sys_wait(struct pcb_s* dest);
-struct pcb_s* sys_create_process(func_t* entry);
+struct pcb_s* sys_create_process(func_t* entry, int32_t niceness);
 ProcessState sys_process_state(struct pcb_s* process);
 int sys_process_return_code(struct pcb_s* process);
 void* sys_malloc(uint32_t size);

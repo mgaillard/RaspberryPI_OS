@@ -136,13 +136,14 @@ int sys_wait(struct pcb_s* dest)
 	return status;
 }
 
-struct pcb_s* sys_create_process(func_t* entry)
+struct pcb_s* sys_create_process(func_t* entry, int32_t niceness)
 {
 	struct pcb_s* process;
+	//Les parametres sont dans les registres R1 et R2.
+	__asm("mov r1, %0" : : "r"(entry));
+	__asm("mov r2, %0" : : "r"(niceness) : "r1");
 	//On donne le numero d'appel système dans R0.
-	__asm("mov r0, %0" : : "I"(SYS_CREATE_PROCESS));
-	//Le parametre est dans le registre R1.
-	__asm("mov r1, %0" : : "r"(entry) : "r0");
+	__asm("mov r0, %0" : : "I"(SYS_CREATE_PROCESS) : "r1", "r2");
 	//On fait une interruption logicielle.
 	__asm("swi #0");
 	//On recupère le résultat de l'appel système depuis le registre R0.
@@ -330,10 +331,12 @@ void do_sys_free_process(int* pile)
 void do_sys_create_process(int* pile)
 {
 	func_t* entry;
+	int32_t niceness;
 	struct pcb_s* process;
 	//On recupere les arguments depuis la pile.
 	entry = (func_t*)pile[1];
-	process = create_process(entry);
+	niceness = (int32_t)pile[2];
+	process = create_process(entry, niceness);
 	//On retourne la PCB par le registre R0 de la pile.
 	pile[0] = (int)process;
 }
