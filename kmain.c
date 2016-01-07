@@ -48,18 +48,28 @@ int process_led_off()
 	return EXIT_SUCCESS;
 }
 
+int process_screen()
+{
+	for (;;)
+	{
+		drawBlue();
+		drawRed();
+	}
+	return EXIT_SUCCESS;
+}
+
 int kmain( void )
 {
-    struct pcb_s* process_alloc;
-    struct pcb_s* process_on;
-    struct pcb_s* process_off;
+    struct pcb_s* process_led_on_pcb;
+    struct pcb_s* process_led_off_pcb;
+    struct pcb_s* process_screen_pcb;
     
-    FramebufferInitialize();
+    FramebufferInitialize();	
     sched_init();
-
-    process_alloc = sys_create_process((func_t*)&process_dynamic_alloc, 20);
-    process_on = sys_create_process((func_t*)&process_led_on, 10);
-    process_off = sys_create_process((func_t*)&process_led_off, 10);
+	
+    process_led_on_pcb = sys_create_process((func_t*)&process_led_on, 20);
+    process_led_off_pcb = sys_create_process((func_t*)&process_led_off, 20);
+    process_screen_pcb = sys_create_process((func_t*)&process_screen, 10);
 	
 	// ******************************************
 	// switch CPU to USER mode
@@ -71,9 +81,9 @@ int kmain( void )
     // ******************************************
 	
 	//On attend la terminaison de notre processus.
-    sys_wait(process_alloc);
-    sys_wait(process_on);
-    sys_wait(process_off);
+	sys_wait(process_screen_pcb);
+    sys_wait(process_led_on_pcb);
+    sys_wait(process_led_off_pcb);
 	
 	return 0;
 }

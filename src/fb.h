@@ -58,11 +58,15 @@ void drawRed();
 
 void drawBlue();
 
-void drawRect(uint32_t left, uint32_t top, uint32_t width, uint32_t length, uint8_t red, uint8_t green, uint8_t blue);
+void drawRect(uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint8_t red, uint8_t green, uint8_t blue);
 
 uint32_t getWidthFB();
 
 uint32_t getHeightFB();
+
+uint32_t getAddressFB();
+
+uint32_t getSizeFB();
 
 void drawChar(uint32_t left, uint32_t top, char c, uint8_t red, uint8_t green, uint8_t blue);
 

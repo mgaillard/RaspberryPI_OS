@@ -277,3 +277,13 @@ uint32_t getWidthFB(){
 uint32_t getHeightFB(){
 	return fb_y;
 }
+
+uint32_t getAddressFB()
+{
+	return fb_address;
+}
+
+uint32_t getSizeFB()
+{
+	return fb_size_bytes;
+}

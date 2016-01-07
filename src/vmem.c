@@ -5,6 +5,7 @@
 #include "page_table.h"
 #include "util.h"
 #include "syscall.h"
+#include "fb.h"
 
 uint32_t* mmu_table_base;
 
@@ -60,6 +61,8 @@ uint32_t* init_kern_translation_table()
 	const uint32_t SECOND_LVL_TT_KERNEL_NB = ((uint32_t)&__kernel_heap_end__ + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t SECOND_LVL_TT_DEVICES_START = DEVICE_SPACE_START / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t SECOND_LVL_TT_DEVICES_END = (DEVICE_SPACE_END + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	const uint32_t FRAMEBUFFER_FIRST_FRAME = getAddressFB() / PAGE_SIZE;
+	const uint32_t FRAMEBUFFER_LAST_FRAME = (getAddressFB() + getSizeFB()) / PAGE_SIZE;
 	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
 	const uint32_t SECOND_LEVEL_DEVICE_FLAGS = 0x17;
 
@@ -77,6 +80,16 @@ uint32_t* init_kern_translation_table()
 			//On ajoute cette frame à la table des pages.
 			add_entry_page_table(page_table, first_level_index, second_level_index, frame_address, SECOND_LEVEL_FLAGS);
 		}
+	}
+	
+	//On fait correspondre les adresses logiques et physiques du framebuffer de l'écran.
+	for (uint32_t frame = FRAMEBUFFER_FIRST_FRAME;frame <= FRAMEBUFFER_LAST_FRAME;frame++)
+	{
+		uint32_t first_level_index = frame / SECOND_LVL_TT_COUNT;
+        uint32_t second_level_index = frame - first_level_index * SECOND_LVL_TT_COUNT;
+        uint32_t frame_address = frame*PAGE_SIZE;
+        //On ajoute cette frame à la table des pages.
+		add_entry_page_table(page_table, first_level_index, second_level_index, frame_address, SECOND_LEVEL_FLAGS);
 	}
 
 	//On fait correspondre les adresses logiques du noyau aux adresses physiques pour la partie mémoire des devices.
@@ -115,6 +128,8 @@ uint32_t* init_process_translation_table()
 	const uint32_t KERNEL_FRAME_NB = ((uint32_t)&__kernel_heap_start__ + 1) / PAGE_SIZE;
 	const uint32_t SECOND_LVL_TT_DEVICES_START = DEVICE_SPACE_START / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
 	const uint32_t SECOND_LVL_TT_DEVICES_END = (DEVICE_SPACE_END + 1) / (SECOND_LVL_TT_COUNT*PAGE_SIZE);
+	const uint32_t FRAMEBUFFER_FIRST_FRAME = getAddressFB() / PAGE_SIZE;
+	const uint32_t FRAMEBUFFER_LAST_FRAME = (getAddressFB() + getSizeFB()) / PAGE_SIZE;
 	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
 	const uint32_t SECOND_LEVEL_DEVICE_FLAGS = 0x17;
 
@@ -129,6 +144,16 @@ uint32_t* init_process_translation_table()
 		uint32_t second_level_index = frame - first_level_index * SECOND_LVL_TT_COUNT;
 		uint32_t frame_address = frame * PAGE_SIZE;
 
+		add_entry_page_table(page_table, first_level_index, second_level_index, frame_address, SECOND_LEVEL_FLAGS);
+	}
+	
+	//On fait correspondre les adresses logiques et physiques du framebuffer de l'écran.
+	for (uint32_t frame = FRAMEBUFFER_FIRST_FRAME;frame <= FRAMEBUFFER_LAST_FRAME;frame++)
+	{
+		uint32_t first_level_index = frame / SECOND_LVL_TT_COUNT;
+        uint32_t second_level_index = frame - first_level_index * SECOND_LVL_TT_COUNT;
+        uint32_t frame_address = frame*PAGE_SIZE;
+        //On ajoute cette frame à la table des pages.
 		add_entry_page_table(page_table, first_level_index, second_level_index, frame_address, SECOND_LEVEL_FLAGS);
 	}
 	
