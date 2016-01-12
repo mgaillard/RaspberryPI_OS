@@ -85,7 +85,7 @@ void game_of_life(const int left, const int top, int width, int height, const in
     //On initialise les tableaux contenant les cellules.
     for (int i = 0;i < height * width;i++)
     {
-        screen[i] = (i % 2);
+        screen[i] = (i % 3);
         buffer[i] = 0;
     }
 
@@ -178,12 +178,29 @@ int process_screen_right()
 
 int process_screen_top_left()
 {
-    uint32_t width = getWidthFB() / 2;
+    int status;
+    uint32_t width = getWidthFB() / 4;
     uint32_t height = getHeightFB() / 2;
+    struct pcb_s* child_process;
 
-    game_of_life(0, 0, width - 5, height - 5, 16);
+    child_process = sys_fork();
 
-    return EXIT_SUCCESS;
+    if (child_process == 0)
+    {
+        //On est dans le processus fils.
+        game_of_life(0, 0, width - 5, height - 5, 8);
+
+        return EXIT_SUCCESS;
+    }
+    else
+    {
+        //On est dans le processus pere.
+        game_of_life(width + 5, 0, width - 5, height - 5, 8);
+
+        status = sys_wait(child_process);
+    }
+
+    return status;
 }
 
 int process_screen_bottom_left()
@@ -198,18 +215,16 @@ int process_screen_bottom_left()
 
 int kmain( void )
 {
-    //struct pcb_s* process_screen_right_pcb;
-    //struct pcb_s* process_screen_top_left_pcb;
-    //struct pcb_s* process_screen_bottom_left_pcb;
-    struct pcb_s* process_fork_pcb;
+    struct pcb_s* process_screen_right_pcb;
+    struct pcb_s* process_screen_top_left_pcb;
+    struct pcb_s* process_screen_bottom_left_pcb;
     
-    //FramebufferInitialize();	
+    FramebufferInitialize();	
     sched_init();
 
-    //process_screen_right_pcb = sys_create_process((func_t*)&process_screen_right, 20);
-    //process_screen_top_left_pcb = sys_create_process((func_t*)&process_screen_top_left, 20);
-    //process_screen_bottom_left_pcb = sys_create_process((func_t*)&process_screen_bottom_left, 20);
-    process_fork_pcb = sys_create_process((func_t*)&process_fork, 20);
+    process_screen_right_pcb = sys_create_process((func_t*)&process_screen_right, 18);
+    process_screen_top_left_pcb = sys_create_process((func_t*)&process_screen_top_left, 20);
+    process_screen_bottom_left_pcb = sys_create_process((func_t*)&process_screen_bottom_left, 20);
 	
 	// ******************************************
 	// switch CPU to USER mode
@@ -221,10 +236,9 @@ int kmain( void )
     // ******************************************
 	
 	//On attend la terminaison de notre processus.
-	//sys_wait(process_screen_right_pcb);
-    //sys_wait(process_screen_top_left_pcb);
-    //sys_wait(process_screen_bottom_left_pcb);
-    sys_wait(process_fork_pcb);
+	sys_wait(process_screen_right_pcb);
+    sys_wait(process_screen_top_left_pcb);
+    sys_wait(process_screen_bottom_left_pcb);
 	
 	return 0;
 }
