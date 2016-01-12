@@ -49,6 +49,7 @@ void sched_init()
 	//car il est le seul processus a etre execute.
 	kmain_process.previous_process = &kmain_process;
 	kmain_process.next_process = &kmain_process;
+	kmain_process.parent_process = 0;
 	//On initialise l'etat du processus dans la PCB.
 	kmain_process.state = RUNNING;
 	//Initialisation de la table des pages du processus.
@@ -176,6 +177,8 @@ struct pcb_s* create_process(func_t* entry, int32_t niceness)
 	//Calcul du poids en fonction de la niceness
     process_pcb->weight = niceness_to_weight(niceness);
     total_weight += process_pcb->weight;
+    //On definit le parent de ce processus.
+    process_pcb->parent_process = current_process;
 	//On insere la PCB dans la liste circulaire du round-robin, juste apres current_process.
 	process_pcb->next_process = current_process->next_process;
 	process_pcb->previous_process = current_process;
@@ -183,6 +186,65 @@ struct pcb_s* create_process(func_t* entry, int32_t niceness)
 	current_process->next_process = process_pcb;
 	//On retourne la pcb initialisee.
 	return process_pcb;
+}
+
+struct pcb_s* fork_current_process(int* pile)
+{
+	//On sauvegarde le contexte du processus courant.
+	save_context(pile);
+	//Allocation dynamique d'un struct pcb_s pour le nouveau processus.
+	struct pcb_s* child_pcb = (struct pcb_s*)kAlloc(sizeof(struct pcb_s));
+	//On copie la pcb du processus courant dans celle de l'enfant.
+	for (uint32_t i = 0;i < 13;i++)
+	{
+		child_pcb->registers[i] = current_process->registers[i];
+	}
+	child_pcb->lr_user = current_process->lr_user;
+	child_pcb->lr_svc = current_process->lr_svc;
+	child_pcb->debut_sp = current_process->debut_sp;
+	child_pcb->cpsr = current_process->cpsr;
+	child_pcb->weight = current_process->weight;
+	//On initialise d'autres champs.
+	child_pcb->state = READY;
+	child_pcb->returnCode = -1;
+	total_weight += child_pcb->weight;
+	child_pcb->parent_process = current_process;
+	child_pcb->page_table = init_process_translation_table();
+	//On insere la PCB dans la liste circulaire du round-robin, juste apres current_process.
+	child_pcb->next_process = current_process->next_process;
+	child_pcb->previous_process = current_process;
+	current_process->next_process->previous_process = child_pcb;
+	current_process->next_process = child_pcb;
+	//On alloue une pile.
+	child_pcb->debut_sp = vmem_alloc_for_userland(child_pcb->page_table, PROCESS_STACK_SIZE, UINT32_MAX, DOWN) + PROCESS_STACK_SIZE;
+	child_pcb->sp = current_process->sp;
+	//On copie le contenu de la pile.
+	uint32_t stack_first_page = ((uint32_t)child_pcb->debut_sp - PROCESS_STACK_SIZE)/PAGE_SIZE;
+	uint32_t stack_page_size = PROCESS_STACK_SIZE / PAGE_SIZE;
+	for (uint32_t page = 0;page < stack_page_size;page++)
+	{
+		uint32_t address = (stack_first_page + page)*PAGE_SIZE;
+		//On regarde le numero de frame pour chaque processus.
+		uint32_t frame_current_process = vmem_translate(address, current_process->page_table) / PAGE_SIZE;
+		uint32_t frame_child_process = vmem_translate(address, child_pcb->page_table) / PAGE_SIZE;
+		//On copie le contenu d'une frame dans l'autre.
+		vmem_copy_frame(frame_child_process, frame_current_process);
+	}
+
+	//On alloue le tas.
+	uint32_t h_size = heap_size(current_process->heap);
+	uint32_t h_address = (uint32_t)current_process->heap->address;
+	if (h_size > 0)
+	{
+		vmem_alloc_for_userland(child_pcb->page_table, h_size, h_address, UP);
+	}
+
+	//TODO: Copier les frames du tas, puis copier les MemoryBlock.
+
+	//Pour le processus enfant, on retourne 0 comme pcb.
+	child_pcb->registers[0] = 0;
+
+	return child_pcb;
 }
 
 void __attribute__((naked)) start_current_process()

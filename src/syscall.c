@@ -20,7 +20,8 @@ enum SysCalls
 	SYS_PROCESS_STATE,
 	SYS_PROCESS_RETURN_CODE,
 	SYS_MALLOC,
-	SYS_FREE
+	SYS_FREE,
+	SYS_FORK
 };
 
 //------------------------------------------------------Fonction privées
@@ -35,6 +36,7 @@ void do_sys_process_state(int* pile);
 void do_sys_process_return_code(int* pile);
 void do_sys_malloc(int* pile);
 void do_sys_free(int* pile);
+void do_sys_fork(int* pile);
 
 //-----------------------------------------------------------Réalisation
 
@@ -207,6 +209,19 @@ void sys_free(void* address)
 	__asm("swi #0");
 }
 
+struct pcb_s* sys_fork()
+{
+	struct pcb_s* process;
+	//On donne le numero d'appel système dans R0.
+	__asm("mov r0, %0" : : "I"(SYS_FORK));
+	//On fait une interruption logicielle.
+	__asm("swi #0");
+	//On recupère le résultat de l'appel système depuis le registre R0.
+	__asm("mov %0, r0" : "=r"(process));
+
+	return process;
+}
+
 void __attribute__((naked)) swi_handler()
 {
 	int numeroAppelSysteme;
@@ -263,6 +278,9 @@ void __attribute__((naked)) swi_handler()
 			break;
 		case SYS_FREE:
 			do_sys_free(pile);
+			break;
+		case SYS_FORK:
+			do_sys_fork(pile);
 			break;
 		default:
 			//L'appel système demande n'est pas connu.
@@ -371,4 +389,11 @@ void do_sys_free(int* pile)
 	MemoryBlock* process_heap = get_current_process_heap();
 	//On libère ce bloc.
 	heap_free(process_heap, address);
+}
+
+void do_sys_fork(int* pile)
+{
+	struct pcb_s* child = fork_current_process(pile);
+	//On retourne l'adresse de la pcb de l'enfant.
+	pile[0] = (int)child;
 }

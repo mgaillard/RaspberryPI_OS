@@ -48,6 +48,25 @@ int process_led_off()
 	return EXIT_SUCCESS;
 }
 
+int process_fork()
+{
+    int status;
+    struct pcb_s* child_process = sys_fork();
+
+    if (child_process == 0)
+    {
+        //On est dans le processus fils.
+        return EXIT_SUCCESS;
+    }
+    else
+    {
+        //On est dans le processus pere.
+        status = sys_wait(child_process);
+    }
+
+    return status;
+}
+
 void game_of_life(const int left, const int top, int width, int height, const int cell_size)
 {
     //Contient l'état des pixels affichés sur l'écran.
@@ -179,16 +198,18 @@ int process_screen_bottom_left()
 
 int kmain( void )
 {
-    struct pcb_s* process_screen_right_pcb;
-    struct pcb_s* process_screen_top_left_pcb;
-    struct pcb_s* process_screen_bottom_left_pcb;
+    //struct pcb_s* process_screen_right_pcb;
+    //struct pcb_s* process_screen_top_left_pcb;
+    //struct pcb_s* process_screen_bottom_left_pcb;
+    struct pcb_s* process_fork_pcb;
     
-    FramebufferInitialize();	
+    //FramebufferInitialize();	
     sched_init();
 
-    process_screen_right_pcb = sys_create_process((func_t*)&process_screen_right, 20);
-    process_screen_top_left_pcb = sys_create_process((func_t*)&process_screen_top_left, 20);
-    process_screen_bottom_left_pcb = sys_create_process((func_t*)&process_screen_bottom_left, 20);
+    //process_screen_right_pcb = sys_create_process((func_t*)&process_screen_right, 20);
+    //process_screen_top_left_pcb = sys_create_process((func_t*)&process_screen_top_left, 20);
+    //process_screen_bottom_left_pcb = sys_create_process((func_t*)&process_screen_bottom_left, 20);
+    process_fork_pcb = sys_create_process((func_t*)&process_fork, 20);
 	
 	// ******************************************
 	// switch CPU to USER mode
@@ -200,9 +221,10 @@ int kmain( void )
     // ******************************************
 	
 	//On attend la terminaison de notre processus.
-	sys_wait(process_screen_right_pcb);
-    sys_wait(process_screen_top_left_pcb);
-    sys_wait(process_screen_bottom_left_pcb);
+	//sys_wait(process_screen_right_pcb);
+    //sys_wait(process_screen_top_left_pcb);
+    //sys_wait(process_screen_bottom_left_pcb);
+    sys_wait(process_fork_pcb);
 	
 	return 0;
 }

@@ -284,7 +284,7 @@ uint32_t find_free_pages_page_table(const uint32_t* page_table, uint32_t page_nb
             }
         }
     }
-    //On ne peut pas trouver assez de pges libres.
+    //On ne peut pas trouver assez de pages libres.
     return UINT32_MAX;
 }
 

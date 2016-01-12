@@ -102,6 +102,22 @@ void* heap_alloc(MemoryBlock* heap, uint32_t* page_table, uint32_t size)
 	}
 }
 
+uint32_t heap_size(MemoryBlock* heap)
+{
+	//On retient la taille totale du tas.
+	uint32_t size = 0;
+	//On parcourt toute la liste.
+	MemoryBlock* current_block = heap;
+	while (current_block != NULL)
+	{
+		size += current_block->size;
+
+		current_block = current_block->next;
+	}
+
+	return size;
+}
+
 void heap_free(MemoryBlock* heap, void* address)
 {
 	//On recherche le bloc débutant à cette adresse et on le libère.

@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "fb.h"
 
+//La table des pages du noyau.
 uint32_t* mmu_table_base;
 
 void start_mmu_C()
@@ -226,6 +227,49 @@ uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size, uint32_t a
 
 	//On retourne l'adresse de la page basse.
 	return (uint8_t*)(free_pages * PAGE_SIZE);
+}
+
+void* memcpy(void* destination, const void* source, uint32_t size)
+{
+	const uint32_t* copy_source = (const uint32_t*)source;
+	uint32_t* copy_destination = (uint32_t*)destination;
+	//On copie 4 octets par 4.
+	for (uint32_t i = 0;i < size / 4;i++)
+	{
+		copy_destination[i] = copy_source[i];
+	}
+
+	return destination;
+}
+
+void vmem_copy_frame(uint32_t destination_frame, uint32_t source_frame)
+{
+	const uint32_t LAST_KERNEL_PAGE = ((uint32_t)&__kernel_heap_end__ + 1) / PAGE_SIZE;
+	const uint32_t SECOND_LEVEL_FLAGS = 0x52;
+	uint32_t source_page;
+	uint32_t source_first_level_index;
+	uint32_t source_second_level_index;
+	uint32_t destination_page;
+	uint32_t destination_first_level_index;
+	uint32_t destination_second_level_index;
+
+	//On ajoute les deux frames à la table des pages du noyau.
+	source_page = find_free_pages_page_table(mmu_table_base, 1, LAST_KERNEL_PAGE, UP);
+	source_first_level_index = source_page / SECOND_LVL_TT_COUNT;
+    source_second_level_index = source_page - source_first_level_index * SECOND_LVL_TT_COUNT;
+	add_entry_page_table(mmu_table_base, source_first_level_index, source_second_level_index, source_frame * PAGE_SIZE, SECOND_LEVEL_FLAGS);
+
+	destination_page = find_free_pages_page_table(mmu_table_base, 1, source_page, UP);
+	destination_first_level_index = destination_page / SECOND_LVL_TT_COUNT;
+    destination_second_level_index = destination_page - destination_first_level_index * SECOND_LVL_TT_COUNT;
+	add_entry_page_table(mmu_table_base, destination_first_level_index, destination_second_level_index, destination_frame * PAGE_SIZE, SECOND_LEVEL_FLAGS);
+	//On effectue la copie entre les deux pages.
+	memcpy((void*)(destination_page * PAGE_SIZE), (void*)(source_page * PAGE_SIZE), PAGE_SIZE);
+	//On supprime les deux pages.
+	free_page_page_table(mmu_table_base, source_first_level_index, source_second_level_index);
+	free_page_page_table(mmu_table_base, destination_first_level_index, destination_second_level_index);
+	//On invalide la TLB car deux pages ont été supprimées.
+	INVALIDATE_TLB();
 }
 
 void vmem_free(uint32_t* page_table, uint8_t* address, uint32_t size)

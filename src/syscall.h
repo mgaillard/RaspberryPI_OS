@@ -18,5 +18,6 @@ ProcessState sys_process_state(struct pcb_s* process);
 int sys_process_return_code(struct pcb_s* process);
 void* sys_malloc(uint32_t size);
 void sys_free(void* address);
+struct pcb_s* sys_fork();
 
 #endif

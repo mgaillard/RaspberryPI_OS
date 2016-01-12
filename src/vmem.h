@@ -62,6 +62,21 @@ void load_page_table(const uint32_t* table);
 uint8_t* vmem_alloc_for_userland(uint32_t* page_table, uint32_t size, uint32_t address, int direction);
 
 /**
+ * Copie une zone de mémoire dans une autre zone.
+ * Attention la copie doit faire au moins 4 octets.
+ * @param destination L'adresse de destination.
+ * @param source L'adresse source.
+ * @param size La taille de la zone mémoire à copier.
+ * @return La destination.
+ */
+void* memcpy(void* destination, const void* source, uint32_t size);
+
+/**
+ * Copie le contenu d'une frame dans une autre frame.
+ */
+void vmem_copy_frame(uint32_t destination_frame, uint32_t source_frame);
+
+/**
  * Libère une plage de pages mémoires dans une table de pages.
  * @param page_table La table des pages dans laquelle libérer la mémoire.
  * @param address L'adresse de début de la plage de pages.

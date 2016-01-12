@@ -55,6 +55,8 @@ struct pcb_s
 	int returnCode;
 	//Le poids du processus.
 	uint32_t weight;
+	//Le père du processus.
+	struct pcb_s* parent_process;
 	//Le processus precedent dans l'ordre du round robin.
 	struct pcb_s* previous_process;
 	//Le processus suivant dans l'ordre du round robin.
@@ -72,6 +74,8 @@ void yield(int* pile);
 void exit_process(int* pile);
 //Cree et alloue la memoire pour un nouveau processus.
 struct pcb_s* create_process(func_t* entry, int32_t niceness);
+//Sauvegarde le contexte du processus courant. Puis le Fork.
+struct pcb_s* fork_current_process(int* pile);
 //Libere la PCB d'un processus et le retire de la liste circulaire.
 void free_process(struct pcb_s* process);
 //Handler d'interruption du timer.

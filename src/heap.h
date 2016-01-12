@@ -39,6 +39,13 @@ MemoryBlock* heap_init(void* address);
 void* heap_alloc(MemoryBlock* heap, uint32_t* page_table, uint32_t size);
 
 /**
+ * Retourne la taille occupée en mémoire par le tas.
+ * @param heap Le tas dont on veut connaitre la taille.
+ * @return La taille totale du tas.
+ */
+uint32_t heap_size(MemoryBlock* heap);
+
+/**
  * Libère la mémoire du bloc commençant à une certaine adresse.
  * @param heap Le tas dans lequel libérer le bloc.
  * @param address L'adresse de début du bloc à libérer.
