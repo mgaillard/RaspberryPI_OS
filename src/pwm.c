@@ -10,15 +10,20 @@ static volatile unsigned* pwm = (void*)PWM_BASE;
 /* Decomment this in order to get sound */
 /* char* audio_data = &_binary_tune_wav_start; */
 
-static void pause(int t) {
+static void pause(int t)
+{
     // Pause for about t ms
     int i;
-    for (;t>0;t--) {
-	for (i=5000;i>0;i--) 
-	    i++; i--;
+
+    for (; t > 0; t--)
+    {
+	    for (i = 5000; i > 0; i--)
+        {
+            i++;
+            i--;
+        }
     }
 }
-
 
 static void audio_init(void)
 {
