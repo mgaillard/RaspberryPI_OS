@@ -2,7 +2,7 @@
 
 layout split
 focus cmd
-winheight cmd 25
+winheight cmd 20
 target remote:1234
 
 set history filename ~/.gdb_history
