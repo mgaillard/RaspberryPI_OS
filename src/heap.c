@@ -25,7 +25,7 @@ MemoryBlock* heap_init(void* address)
 void* heap_alloc(MemoryBlock* heap, uint32_t* page_table, uint32_t size)
 {
 	//On recherche un bloc libre assez grand pour accueillir ce nouveau bloc.
-	MemoryBlock* last_block;
+	MemoryBlock* last_block = NULL;
 	MemoryBlock* current_block = heap;
 	while (current_block != NULL && (current_block->type != FREE || current_block->size < size))
 	{
