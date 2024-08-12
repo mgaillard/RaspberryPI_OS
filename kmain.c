@@ -1,6 +1,7 @@
 #include <inttypes.h>
 #include "util.h"
 #include "syscall.h"
+#include "kheap.h"
 #include "sched.h"
 #include "hw.h"
 #include "asm_tools.h"
@@ -219,7 +220,10 @@ int kmain( void )
     struct pcb_s* process_screen_top_left_pcb;
     struct pcb_s* process_screen_bottom_left_pcb;
     
-    FramebufferInitialize();	
+    hw_init();
+    log_str("Starting kernel...\n");
+    FramebufferInitialize();
+    kheap_init();
     sched_init();
 
     process_screen_right_pcb = sys_create_process((func_t*)&process_screen_right, 18);

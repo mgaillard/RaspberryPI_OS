@@ -38,7 +38,6 @@ uint32_t weight_to_timeslice(uint32_t weight);
 
 void sched_init()
 {
-	kheap_init();
 	#if VMEM
 		vmem_init();
 	#else
