@@ -6,7 +6,7 @@
 
 On Ubuntu 22.04 or 24.04, install the following packages:
 ```bash
-$ sudo apt install gcc-arm-none-eabi gdb-multiarch qemu-system
+$ sudo apt install gcc-arm-none-eabi gdb-multiarch qemu-system clang-format
 ```
 
 ### Build
