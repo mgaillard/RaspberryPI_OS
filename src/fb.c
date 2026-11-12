@@ -193,19 +193,19 @@ int FramebufferInitialize() {
 void put_pixel_RGB24(uint32_t x, uint32_t y, uint8_t red, uint8_t green, uint8_t blue) {
 
     if (x >= 0 && x <= fb_x  && y >= 0 && y <= fb_y) {
-        volatile uint32_t *ptr = 0;
+        volatile uint8_t *ptr = 0;
         uint32_t offset = 0;
 
         offset = (y * pitch) + (x * 3);
-        ptr = (uint32_t*) (fb_address + offset);
+        ptr = (volatile uint8_t*) (fb_address + offset);
 #ifdef QEMU
-        *((uint8_t*) ptr) = blue;
-        *((uint8_t*) (ptr + 2)) = red;
+        ptr[0] = blue;
+        ptr[2] = red;
 #else
-        *((uint8_t*) ptr) = red;
-        *((uint8_t*) (ptr + 2)) = blue;      
+        ptr[0] = red;
+        ptr[2] = blue;
 #endif
-        *((uint8_t*) (ptr + 1)) = green;
+        ptr[1] = green;
 
     }
 }
