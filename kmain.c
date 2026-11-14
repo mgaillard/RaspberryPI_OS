@@ -217,18 +217,23 @@ int process_screen_bottom_left()
 int kmain( void )
 {
     struct pcb_s* process_screen_right_pcb;
-    struct pcb_s* process_screen_top_left_pcb;
+    // TODO: The top left process does not work well, probably due to forking.
+    // struct pcb_s* process_screen_top_left_pcb;
     struct pcb_s* process_screen_bottom_left_pcb;
+    struct pcb_s* process_led_on_pcb;
+    struct pcb_s* process_led_off_pcb;
     
     hw_init();
-    log_str("Starting kernel...\n");
+    log_str("Starting kernel...\r\n");
     FramebufferInitialize();
     kheap_init();
     sched_init();
 
     process_screen_right_pcb = sys_create_process((func_t*)&process_screen_right, 18);
-    process_screen_top_left_pcb = sys_create_process((func_t*)&process_screen_top_left, 20);
+    // process_screen_top_left_pcb = sys_create_process((func_t*)&process_screen_top_left, 20);
     process_screen_bottom_left_pcb = sys_create_process((func_t*)&process_screen_bottom_left, 20);
+    process_led_on_pcb = sys_create_process((func_t*)&process_led_on, 20);
+    process_led_off_pcb = sys_create_process((func_t*)&process_led_off, 20);
 	
 	// ******************************************
 	// switch CPU to USER mode
@@ -241,8 +246,10 @@ int kmain( void )
 	
 	//On attend la terminaison de notre processus.
 	sys_wait(process_screen_right_pcb);
-    sys_wait(process_screen_top_left_pcb);
+    // sys_wait(process_screen_top_left_pcb);
     sys_wait(process_screen_bottom_left_pcb);
+    sys_wait(process_led_on_pcb);
+    sys_wait(process_led_off_pcb);
 	
 	return 0;
 }
