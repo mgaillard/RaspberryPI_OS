@@ -1,6 +1,8 @@
 #ifndef __HEADER_UART
 #define __HEADER_UART
 
+#include <stdint.h>
+
 //
 // Registres UART
 #define UART_DR		0x20201000u	// Data register
@@ -42,6 +44,9 @@ void uart_send_str(const char *data);
 
 // Permet d'envoyer un entier signé
 void uart_send_int(int n);
+
+// Permet d'envoyer un entier non signé sur 64 bits
+void uart_send_uint64(uint64_t n);
 
 // Permet de savoir si la receive fifo est vide
 int uart_is_receive_fifo_empty(void);

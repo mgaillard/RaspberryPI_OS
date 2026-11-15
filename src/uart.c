@@ -157,6 +157,36 @@ void uart_send_int(int n)
 	uart_send_str(str);
 }
 
+
+// Prints without 64-bit division (no libgcc): subtract decreasing powers of ten
+void uart_send_uint64(uint64_t n)
+{
+    char buf[21];
+    int len = 0;
+    uint64_t p = 10000000000000000000ULL;
+    int started = 0;
+
+    for (int i = 0; i < 20; i++) {
+        int digit = 0;
+        while (n >= p) {
+            n -= p;
+            digit++;
+        }
+        if (digit != 0 || started || i == 19) {
+            buf[len++] = '0' + (char)digit;
+            started = 1;
+        }
+        // p /= 10 by repeated subtraction is costly; recompute instead
+        uint64_t q = 1;
+        for (int j = 0; j < 18 - i; j++)
+            q *= 10;
+        p = (i == 19) ? 1 : q;
+    }
+    buf[len] = '\0';
+	
+    uart_send_str(buf);
+}
+
 //
 // Permet de recevoir des caractères
 // Block jusqu'a la reception de n-1 caractères, ou la reception

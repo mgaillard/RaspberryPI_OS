@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "hw.h"
+#include "log.h"
 #include "asm_tools.h"
 
 /***************************
@@ -26,8 +27,10 @@ get_date_ms()
     uint32_t date_lowbits = Get32(CLO);
     uint64_t date_highbits = (uint64_t) Get32(CHI);
     uint64_t date = divide(((date_highbits << 32) | date_lowbits), SYS_TIMER_CLOCK_div_1000);
-#else
+#elif QEMU
     uint64_t date = ((uint64_t) 0x43 << 32) | 0x42;
+#else
+    uint64_t date = 0;
 #endif
 
     return date;
@@ -148,7 +151,25 @@ hw_init()
 }
 
 void
+hw_reboot()
+{
+    log_warn_ln("Rebooting...");
+#if RPI
+    Set32(PM_WDOG, PM_PASSWORD | 1);
+    Set32(PM_RSTC, PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET);
+    while (1);
+#elif QEMU
+    __asm("b 0x8000");
+#endif
+}
+
+void
 terminate_kernel()
 {
-    log_str("Exit kernel\n");
+    log_warn_ln("Exit kernel");
+
+    /* Nothing left to schedule: mask interrupts and halt the CPU */
+    DISABLE_IRQ();
+    led_off();
+    while (1);
 }

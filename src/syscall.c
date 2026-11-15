@@ -299,13 +299,7 @@ void __attribute__((naked)) swi_handler()
 
 void do_sys_reboot()
 {
-	#if RPI
-		Set32(PM_WDOG, PM_PASSWORD | 1);
-		Set32(PM_RSTC, PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET);
-		while(1);
-	#else
-		__asm("b 0x8000");
-	#endif
+	hw_reboot();
 }
 
 void do_sys_nop()

@@ -4,6 +4,7 @@
 #include "kheap.h"
 #include "sched.h"
 #include "hw.h"
+#include "log.h"
 #include "asm_tools.h"
 #include "vmem.h"
 #include "fb.h"
@@ -224,16 +225,20 @@ int kmain( void )
     struct pcb_s* process_led_off_pcb;
     
     hw_init();
-    log_str("Starting kernel...\r\n");
+    log_info_ln("Starting kernel...");
     FramebufferInitialize();
+    log_info_ln("Framebuffer initialized");
     kheap_init();
+    log_info_ln("Kernel heap initialized");
     sched_init();
+    log_info_ln("Scheduler initialized");
 
     process_screen_right_pcb = sys_create_process((func_t*)&process_screen_right, 18);
     // process_screen_top_left_pcb = sys_create_process((func_t*)&process_screen_top_left, 20);
     process_screen_bottom_left_pcb = sys_create_process((func_t*)&process_screen_bottom_left, 20);
     process_led_on_pcb = sys_create_process((func_t*)&process_led_on, 20);
     process_led_off_pcb = sys_create_process((func_t*)&process_led_off, 20);
+    log_info_ln("Processes created");
 	
 	// ******************************************
 	// switch CPU to USER mode

@@ -9,17 +9,6 @@
 
 #include <stdint.h>
 
-/****************** Printing  ***********/
-#if SERIAL_PRINT
-#define log_str(msg) uart_send_str(">>>> "); uart_send_str(msg);
-#define log_int(msg) uart_send_int(msg);
-#define log_cr() uart_send_str("\n");
-#else
-#define log_str(msg)
-#define log_int(msg)
-#define log_cr()
-#endif
-
 /*************  Memory mapping ***********/
 #define HEAP_START 0x50000
 #define BCM2708_PERI_BASE 0x20000000
@@ -119,6 +108,7 @@ void led_switch(void);
 void led_blink(void);
 
 void hw_init();
+void hw_reboot();
 void terminate_kernel();
 
 uint64_t divide(uint64_t x, uint64_t y);
