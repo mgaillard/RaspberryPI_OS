@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "stdint.h"
 #include "config.h"
 #include "hw.h"
 #include "log.h"

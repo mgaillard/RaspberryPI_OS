@@ -1,7 +1,7 @@
 #ifndef __HEADER_UART
 #define __HEADER_UART
 
-#include <stdint.h>
+#include "stdint.h"
 
 //
 // Registres UART

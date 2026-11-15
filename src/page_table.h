@@ -1,7 +1,7 @@
 #ifndef PAGE_TABLE_H
 #define PAGE_TABLE_H
 
-#include <inttypes.h>
+#include "stdint.h"
 
 #define FIRST_LEVEL_FLAGS 0x1
 

@@ -1,7 +1,7 @@
 #ifndef ASM_TOOLS_H
 #define ASM_TOOLS_H
 
-#include <stdint.h>
+#include "stdint.h"
 
 /*
  * Exceptions management

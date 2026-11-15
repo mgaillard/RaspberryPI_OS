@@ -1,7 +1,7 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
 
-#include <inttypes.h>
+#include "stdint.h"
 #include "sched.h"
 
 /*************** Functions declaration mode User *****************/

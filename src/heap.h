@@ -1,7 +1,7 @@
 #ifndef HEAP_H
 #define HEAP_H
 
-#include <inttypes.h>
+#include "stdint.h"
 
 //-----------------------------------------------------------------Types
 enum MemoryBlockType

@@ -1,6 +1,6 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
-#include <inttypes.h>
+#include "stdint.h"
 /*
  * Explication des adresses, offsets, channels, etc: http://elinux.org/RPi_Framebuffer
  * Intro au framebuffer: http://magicsmoke.co.za/?p=284

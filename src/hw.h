@@ -7,7 +7,7 @@
 #include "uart.h"
 #endif
 
-#include <stdint.h>
+#include "stdint.h"
 
 /*************  Memory mapping ***********/
 #define HEAP_START 0x50000

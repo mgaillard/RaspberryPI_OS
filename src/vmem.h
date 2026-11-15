@@ -1,7 +1,7 @@
 #ifndef VMEM_H
 #define VMEM_H
 
-#include <inttypes.h>
+#include "stdint.h"
 #include "sched.h"
 
 //Direction de l'allocation en mémoire.

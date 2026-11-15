@@ -1,7 +1,7 @@
 #ifndef PHYALLOC_H
 #define PHYALLOC_H
 
-#include <stdint.h>
+#include "stdint.h"
 
 extern uint8_t* kernel_heap_top;
 extern uint8_t* kernel_heap_limit;
